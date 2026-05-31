@@ -1,0 +1,8 @@
+git : O termo 'git' n∆o Ç reconhecido como nome de cmdlet, funá∆o, arquivo de script ou programa oper†vel. Verifique a 
+grafia do nome ou, se um caminho tiver sido inclu°do, veja se o caminho est† correto e tente novamente.
+No C:\flutter_windows_3.44.0-stable\flutter\bin\internal\update_engine_version.ps1:55 caractere:11
++ } elseif (git -C "$flutterRoot" ls-files bin/internal/engine.version) ...
++           ~~~
+    + CategoryInfo          : ObjectNotFound: (git:String) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
