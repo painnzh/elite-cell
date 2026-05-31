@@ -47,6 +47,10 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
     status = widget.dados['status'] ?? 'Em análise';
   }
 
+  int converterInteiro(dynamic valor) {
+    return int.tryParse(valor.toString()) ?? 0;
+  }
+
   Map<String, dynamic> get checklist {
     final dadosChecklist = widget.dados['checklist'];
 
@@ -65,8 +69,41 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
     return valor == true ? '✅' : '❌';
   }
 
+  Future<void> baixarEstoqueAutomaticamente() async {
+    if (status != 'Entregue') return;
+    if (widget.dados['estoque_baixado'] == true) return;
+
+    final String peca = (widget.dados['peca_usada'] ?? '').toString();
+    final int quantidadeUsada = converterInteiro(widget.dados['quantidade_peca']);
+
+    if (peca.isEmpty || quantidadeUsada <= 0) return;
+
+    final estoqueBusca = await FirebaseFirestore.instance
+        .collection('estoque')
+        .where('nome', isEqualTo: peca)
+        .limit(1)
+        .get();
+
+    if (estoqueBusca.docs.isEmpty) return;
+
+    final docEstoque = estoqueBusca.docs.first;
+    final dadosEstoque = docEstoque.data();
+
+    final int estoqueAtual = converterInteiro(dadosEstoque['quantidade']);
+    final int novoEstoque = estoqueAtual - quantidadeUsada;
+
+    await FirebaseFirestore.instance
+        .collection('estoque')
+        .doc(docEstoque.id)
+        .update({
+      'quantidade': novoEstoque < 0 ? '0' : novoEstoque.toString(),
+    });
+  }
+
   Future<void> salvarAlteracoes() async {
     final id = widget.dados['id'];
+
+    await baixarEstoqueAutomaticamente();
 
     await FirebaseFirestore.instance.collection('ordens_servico').doc(id).update({
       'cliente': clienteController.text,
@@ -78,8 +115,17 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
       'valor': valorController.text,
       'observacao': observacaoController.text,
       'status': status,
+      'estoque_baixado': status == 'Entregue'
+          ? true
+          : widget.dados['estoque_baixado'] ?? false,
       'atualizado_em': DateTime.now(),
     });
+
+    widget.dados['status'] = status;
+
+    if (status == 'Entregue') {
+      widget.dados['estoque_baixado'] = true;
+    }
 
     setState(() {
       editando = false;
@@ -209,6 +255,8 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
           pw.Divider(),
           pw.Text('Marca: ${marcaController.text}'),
           pw.Text('Modelo: ${modeloController.text}'),
+          pw.Text('Peça utilizada: ${widget.dados['peca_usada'] ?? 'Nenhuma'}'),
+          pw.Text('Qtd. peça: ${widget.dados['quantidade_peca'] ?? 0}'),
           ...checklistPDF(),
           pw.SizedBox(height: 20),
           pw.Text(
@@ -387,6 +435,35 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
         ),
         subtitle: Text(
           controller.text,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget infoCard(String titulo, String valor) {
+    if (valor.isEmpty) return SizedBox();
+
+    return Card(
+      color: Color(0xFF111111),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: dourado, width: 1),
+      ),
+      margin: EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        title: Text(
+          titulo,
+          style: TextStyle(
+            color: dourado,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        subtitle: Text(
+          valor,
           style: TextStyle(
             color: Colors.white,
             fontSize: 16,
@@ -584,6 +661,8 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
   @override
   Widget build(BuildContext context) {
     final numeroOS = widget.dados['numero_os'] ?? 'Sem número';
+    final pecaUsada = (widget.dados['peca_usada'] ?? '').toString();
+    final quantidadePeca = (widget.dados['quantidade_peca'] ?? '').toString();
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -671,6 +750,9 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
             galeriaFotos(),
 
             checklistTela(),
+
+            infoCard('Peça utilizada', pecaUsada),
+            infoCard('Quantidade da peça', quantidadePeca),
 
             campo('Cliente', clienteController),
             campo('Telefone', telefoneController),

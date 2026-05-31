@@ -29,6 +29,11 @@ class _OsScreenState extends State<OsScreen> {
   final observacaoController = TextEditingController();
 
   String statusSelecionado = 'Em análise';
+  String? tecnicoSelecionado;
+
+  String? pecaSelecionada;
+  final quantidadePecaController = TextEditingController();
+
   String busca = '';
   bool salvando = false;
 
@@ -156,6 +161,12 @@ class _OsScreenState extends State<OsScreen> {
         'valor': valorController.text,
         'observacao': observacaoController.text,
         'status': statusSelecionado,
+        'tecnico': tecnicoSelecionado ?? '',
+        'peca_usada': pecaSelecionada ?? '',
+        'quantidade_peca':
+            int.tryParse(quantidadePecaController.text) ?? 0,
+
+        'estoque_baixado': false,
 
         'checklist': {
           'liga': chkLiga,
@@ -196,6 +207,7 @@ class _OsScreenState extends State<OsScreen> {
       defeitoController.clear();
       valorController.clear();
       observacaoController.clear();
+      quantidadePecaController.clear();
 
       setState(() {
         fotoFrente = null;
@@ -216,6 +228,8 @@ class _OsScreenState extends State<OsScreen> {
         chkAltoFalante = true;
         chkConector = true;
         chkOxidado = false;
+
+        tecnicoSelecionado = null;
         statusSelecionado = 'Em análise';
         salvando = false;
       });
@@ -223,7 +237,7 @@ class _OsScreenState extends State<OsScreen> {
       Navigator.pop(context);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('OS salva com fotos na nuvem')),
+        SnackBar(content: Text('OS salva com técnico responsável')),
       );
     } catch (e) {
       setState(() {
@@ -411,6 +425,55 @@ class _OsScreenState extends State<OsScreen> {
     );
   }
 
+  Widget tecnicoDropdown(void Function(void Function()) setModalState) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('tecnicos')
+          .orderBy('nome')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return SizedBox();
+        }
+
+        final tecnicos = snapshot.data!.docs;
+
+        if (tecnicos.isEmpty) {
+          return Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: Text(
+              'Nenhum técnico cadastrado',
+              style: TextStyle(color: Colors.white70),
+            ),
+          );
+        }
+
+        return Padding(
+          padding: EdgeInsets.only(bottom: 12),
+          child: DropdownButtonFormField<String>(
+            value: tecnicoSelecionado,
+            dropdownColor: Color(0xFF111111),
+            style: TextStyle(color: Colors.white),
+            decoration: decoracaoCampo('Técnico Responsável'),
+            items: tecnicos.map((doc) {
+              final dados = doc.data() as Map<String, dynamic>;
+
+              return DropdownMenuItem<String>(
+                value: dados['nome'],
+                child: Text(dados['nome']),
+              );
+            }).toList(),
+            onChanged: (valor) {
+              setModalState(() {
+                tecnicoSelecionado = valor;
+              });
+            },
+          ),
+        );
+      },
+    );
+  }
+
   void abrirFormulario() {
     showDialog(
       context: context,
@@ -437,6 +500,45 @@ class _OsScreenState extends State<OsScreen> {
                     campoFormulario(observacaoController, 'Observações'),
 
                     SizedBox(height: 12),
+
+                    tecnicoDropdown(setModalState),
+                    StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('estoque')
+                          .orderBy('nome')
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) return SizedBox();
+
+                        return Padding(
+                          padding: EdgeInsets.only(bottom: 12),
+                          child: DropdownButtonFormField<String>(
+                            value: pecaSelecionada,
+                            dropdownColor: Color(0xFF111111),
+                            style: TextStyle(color: Colors.white),
+                            decoration: decoracaoCampo('Peça Utilizada'),
+                            items: snapshot.data!.docs.map((doc) {
+                              final dados = doc.data() as Map<String, dynamic>;
+
+                              return DropdownMenuItem<String>(
+                                value: dados['nome'],
+                                child: Text(dados['nome']),
+                              );
+                            }).toList(),
+                            onChanged: (valor) {
+                              setModalState(() {
+                                pecaSelecionada = valor;
+                              });
+                            },
+                          ),
+                        );
+                      },
+                    ),
+
+                    campoFormulario(
+                      quantidadePecaController,
+                      'Quantidade da peça',
+                    ),
 
                     checklistEntrada(setModalState),
 
@@ -469,7 +571,7 @@ class _OsScreenState extends State<OsScreen> {
                         );
                       }).toList(),
                       onChanged: (valor) {
-                        setState(() {
+                        setModalState(() {
                           statusSelecionado = valor!;
                         });
                       },
@@ -487,6 +589,9 @@ class _OsScreenState extends State<OsScreen> {
                             fotoTras = null;
                             fotoImei = null;
                             fotoAntesDepois = null;
+                            tecnicoSelecionado = null;
+                            pecaSelecionada = null;
+                            quantidadePecaController.clear();
                           });
                           Navigator.pop(context);
                         },
@@ -613,6 +718,10 @@ class _OsScreenState extends State<OsScreen> {
                       (dadosOs['numero_os'] ?? '')
                           .toString()
                           .toLowerCase()
+                          .contains(texto) ||
+                      (dadosOs['tecnico'] ?? '')
+                          .toString()
+                          .toLowerCase()
                           .contains(texto);
                 }).toList();
 
@@ -652,7 +761,8 @@ class _OsScreenState extends State<OsScreen> {
                             ),
                           ),
                           subtitle: Text(
-                            '${dadosOs['marca'] ?? ''} ${dadosOs['modelo'] ?? ''}',
+                            '${dadosOs['marca'] ?? ''} ${dadosOs['modelo'] ?? ''}\n'
+                            'Técnico: ${dadosOs['tecnico'] ?? 'Não definido'}',
                             style: TextStyle(color: Colors.white70),
                           ),
                           trailing: Text(
