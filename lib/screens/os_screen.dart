@@ -26,6 +26,8 @@ class _OsScreenState extends State<OsScreen> {
   final modeloController = TextEditingController();
   final defeitoController = TextEditingController();
   final valorController = TextEditingController();
+  final valorPecaController = TextEditingController();
+  final descontoController = TextEditingController(text: '0');
   final observacaoController = TextEditingController();
 
   String statusSelecionado = 'Em análise';
@@ -57,6 +59,14 @@ class _OsScreenState extends State<OsScreen> {
   File? fotoAntesDepois;
 
   final os = FirebaseFirestore.instance.collection('ordens_servico');
+
+  double calcularOrcamento(double valorPeca, double descontoPercentual) {
+    double valor = (valorPeca * 2.05) + 70;
+    double desconto = valor * (descontoPercentual / 100);
+    double valorFinal = valor - desconto;
+
+    return (valorFinal / 10).ceil() * 10;
+  }
 
   Future<void> escolherFoto(
     ImageSource origem,
@@ -159,15 +169,14 @@ class _OsScreenState extends State<OsScreen> {
         'modelo': modeloController.text,
         'defeito': defeitoController.text,
         'valor': valorController.text,
+        'valor_peca': valorPecaController.text,
+        'desconto_percentual': descontoController.text,
         'observacao': observacaoController.text,
         'status': statusSelecionado,
         'tecnico': tecnicoSelecionado ?? '',
         'peca_usada': pecaSelecionada ?? '',
-        'quantidade_peca':
-            int.tryParse(quantidadePecaController.text) ?? 0,
-
+        'quantidade_peca': int.tryParse(quantidadePecaController.text) ?? 0,
         'estoque_baixado': false,
-
         'checklist': {
           'liga': chkLiga,
           'touch': chkTouch,
@@ -183,19 +192,16 @@ class _OsScreenState extends State<OsScreen> {
           'conector': chkConector,
           'oxidado': chkOxidado,
         },
-
         'foto_url': fotoFrenteUrl,
         'foto_frente_url': fotoFrenteUrl,
         'foto_tras_url': fotoTrasUrl,
         'foto_imei_url': fotoImeiUrl,
         'foto_antes_depois_url': fotoAntesDepoisUrl,
-
         'foto_path': '',
         'foto_frente_path': '',
         'foto_tras_path': '',
         'foto_imei_path': '',
         'foto_antes_depois_path': '',
-
         'data': DateTime.now(),
       });
 
@@ -206,6 +212,8 @@ class _OsScreenState extends State<OsScreen> {
       modeloController.clear();
       defeitoController.clear();
       valorController.clear();
+      valorPecaController.clear();
+      descontoController.text = '0';
       observacaoController.clear();
       quantidadePecaController.clear();
 
@@ -230,6 +238,7 @@ class _OsScreenState extends State<OsScreen> {
         chkOxidado = false;
 
         tecnicoSelecionado = null;
+        pecaSelecionada = null;
         statusSelecionado = 'Em análise';
         salvando = false;
       });
@@ -237,7 +246,7 @@ class _OsScreenState extends State<OsScreen> {
       Navigator.pop(context);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('OS salva com técnico responsável')),
+        SnackBar(content: Text('OS salva com orçamento automático')),
       );
     } catch (e) {
       setState(() {
@@ -271,7 +280,50 @@ class _OsScreenState extends State<OsScreen> {
       child: TextField(
         controller: controller,
         style: TextStyle(color: Colors.white),
+        keyboardType: label.toLowerCase().contains('valor') ||
+                label.toLowerCase().contains('desconto') ||
+                label.toLowerCase().contains('quantidade')
+            ? TextInputType.number
+            : TextInputType.text,
         decoration: decoracaoCampo(label),
+      ),
+    );
+  }
+
+  Widget botaoCalcularOrcamento(void Function(void Function()) setModalState) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 12),
+      child: SizedBox(
+        width: double.infinity,
+        height: 45,
+        child: ElevatedButton.icon(
+          icon: Icon(Icons.calculate),
+          label: Text('Calcular orçamento'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: dourado,
+            foregroundColor: Colors.black,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onPressed: () {
+            double valorPeca = double.tryParse(
+                  valorPecaController.text.replaceAll(',', '.'),
+                ) ??
+                0;
+
+            double desconto = double.tryParse(
+                  descontoController.text.replaceAll(',', '.'),
+                ) ??
+                0;
+
+            double valorFinal = calcularOrcamento(valorPeca, desconto);
+
+            setModalState(() {
+              valorController.text = valorFinal.toStringAsFixed(0);
+            });
+          },
+        ),
       ),
     );
   }
@@ -496,12 +548,27 @@ class _OsScreenState extends State<OsScreen> {
                     campoFormulario(marcaController, 'Marca'),
                     campoFormulario(modeloController, 'Modelo'),
                     campoFormulario(defeitoController, 'Defeito'),
-                    campoFormulario(valorController, 'Valor'),
+
+                    campoFormulario(
+                      valorPecaController,
+                      'Valor da peça',
+                    ),
+
+                    campoFormulario(
+                      descontoController,
+                      'Desconto (%)',
+                    ),
+
+                    botaoCalcularOrcamento(setModalState),
+
+                    campoFormulario(valorController, 'Valor da OS'),
+
                     campoFormulario(observacaoController, 'Observações'),
 
                     SizedBox(height: 12),
 
                     tecnicoDropdown(setModalState),
+
                     StreamBuilder<QuerySnapshot>(
                       stream: FirebaseFirestore.instance
                           .collection('estoque')
@@ -592,6 +659,8 @@ class _OsScreenState extends State<OsScreen> {
                             tecnicoSelecionado = null;
                             pecaSelecionada = null;
                             quantidadePecaController.clear();
+                            valorPecaController.clear();
+                            descontoController.text = '0';
                           });
                           Navigator.pop(context);
                         },
@@ -626,9 +695,7 @@ class _OsScreenState extends State<OsScreen> {
   }
 
   Widget leadingOS(Map<String, dynamic> dadosOs) {
-    final fotoUrl = (dadosOs['foto_frente_url'] ??
-            dadosOs['foto_url'] ??
-            '')
+    final fotoUrl = (dadosOs['foto_frente_url'] ?? dadosOs['foto_url'] ?? '')
         .toString();
 
     if (fotoUrl.isNotEmpty) {

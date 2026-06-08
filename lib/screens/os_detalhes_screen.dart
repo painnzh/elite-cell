@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -35,14 +36,19 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
   void initState() {
     super.initState();
 
-    clienteController = TextEditingController(text: widget.dados['cliente'] ?? '');
-    telefoneController = TextEditingController(text: widget.dados['telefone'] ?? '');
+    clienteController =
+        TextEditingController(text: widget.dados['cliente'] ?? '');
+    telefoneController =
+        TextEditingController(text: widget.dados['telefone'] ?? '');
     imeiController = TextEditingController(text: widget.dados['imei'] ?? '');
     marcaController = TextEditingController(text: widget.dados['marca'] ?? '');
-    modeloController = TextEditingController(text: widget.dados['modelo'] ?? '');
-    defeitoController = TextEditingController(text: widget.dados['defeito'] ?? '');
+    modeloController =
+        TextEditingController(text: widget.dados['modelo'] ?? '');
+    defeitoController =
+        TextEditingController(text: widget.dados['defeito'] ?? '');
     valorController = TextEditingController(text: widget.dados['valor'] ?? '');
-    observacaoController = TextEditingController(text: widget.dados['observacao'] ?? '');
+    observacaoController =
+        TextEditingController(text: widget.dados['observacao'] ?? '');
 
     status = widget.dados['status'] ?? 'Em análise';
   }
@@ -61,10 +67,6 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
     return {};
   }
 
-  String simNao(dynamic valor) {
-    return valor == true ? 'SIM' : 'NÃO';
-  }
-
   String iconeChecklist(dynamic valor) {
     return valor == true ? '✅' : '❌';
   }
@@ -74,7 +76,8 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
     if (widget.dados['estoque_baixado'] == true) return;
 
     final String peca = (widget.dados['peca_usada'] ?? '').toString();
-    final int quantidadeUsada = converterInteiro(widget.dados['quantidade_peca']);
+    final int quantidadeUsada =
+        converterInteiro(widget.dados['quantidade_peca']);
 
     if (peca.isEmpty || quantidadeUsada <= 0) return;
 
@@ -105,7 +108,10 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
 
     await baixarEstoqueAutomaticamente();
 
-    await FirebaseFirestore.instance.collection('ordens_servico').doc(id).update({
+    await FirebaseFirestore.instance
+        .collection('ordens_servico')
+        .doc(id)
+        .update({
       'cliente': clienteController.text,
       'telefone': telefoneController.text,
       'imei': imeiController.text,
@@ -115,9 +121,8 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
       'valor': valorController.text,
       'observacao': observacaoController.text,
       'status': status,
-      'estoque_baixado': status == 'Entregue'
-          ? true
-          : widget.dados['estoque_baixado'] ?? false,
+      'estoque_baixado':
+          status == 'Entregue' ? true : widget.dados['estoque_baixado'] ?? false,
       'atualizado_em': DateTime.now(),
     });
 
@@ -151,219 +156,300 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
     );
   }
 
-  List<pw.Widget> checklistPDF() {
-    final c = checklist;
+  Future<void> gerarPDF() async {
+    final pdf = pw.Document();
 
-    if (c.isEmpty) {
-      return [];
-    }
-
-    pw.Widget linha(String titulo, String chave) {
+    pw.Widget linha(String titulo, String valor) {
       return pw.Padding(
-        padding: pw.EdgeInsets.only(bottom: 4),
+        padding: pw.EdgeInsets.only(bottom: 6),
         child: pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
           children: [
-            pw.Text(titulo),
             pw.Text(
-              simNao(c[chave]),
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              '$titulo: ',
+              style: pw.TextStyle(
+                fontSize: 10,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+            pw.Expanded(
+              child: pw.Container(
+                padding: pw.EdgeInsets.only(bottom: 2),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border(
+                    bottom: pw.BorderSide(width: 0.5),
+                  ),
+                ),
+                child: pw.Text(
+                  valor,
+                  style: pw.TextStyle(fontSize: 10),
+                ),
+              ),
             ),
           ],
         ),
       );
     }
 
-    return [
-      pw.SizedBox(height: 20),
-      pw.Text(
-        'CHECKLIST DE ENTRADA',
-        style: pw.TextStyle(
-          fontWeight: pw.FontWeight.bold,
-          fontSize: 16,
+    pw.Widget check(String texto) {
+      return pw.Container(
+        width: 230,
+        margin: pw.EdgeInsets.only(bottom: 5),
+        child: pw.Row(
+          children: [
+            pw.Container(
+              width: 10,
+              height: 10,
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(width: 0.8),
+              ),
+            ),
+            pw.SizedBox(width: 6),
+            pw.Text(
+              texto,
+              style: pw.TextStyle(fontSize: 9),
+            ),
+          ],
         ),
-      ),
-      pw.Divider(),
-      linha('Liga', 'liga'),
-      linha('Touch funcionando', 'touch'),
-      linha('Tela sem manchas', 'tela'),
-      linha('Face ID', 'faceId'),
-      linha('Biometria', 'biometria'),
-      linha('Câmera frontal', 'cameraFrontal'),
-      linha('Câmera traseira', 'cameraTraseira'),
-      linha('Wi-Fi', 'wifi'),
-      linha('Bluetooth', 'bluetooth'),
-      linha('Microfone', 'microfone'),
-      linha('Alto-falante', 'altoFalante'),
-      linha('Conector de carga', 'conector'),
-      linha('Aparelho oxidado', 'oxidado'),
-    ];
-  }
-
-  Future<void> gerarPDF() async {
-    final pdf = pw.Document();
+      );
+    }
 
     pdf.addPage(
-      pw.MultiPage(
-        margin: pw.EdgeInsets.all(30),
-        build: (context) => [
-          pw.Center(
-            child: pw.Text(
-              'ELITE CELL ASSISTÊNCIA TÉCNICA',
-              style: pw.TextStyle(
-                fontSize: 24,
-                fontWeight: pw.FontWeight.bold,
-              ),
-            ),
-          ),
-          pw.SizedBox(height: 5),
-          pw.Center(
-            child: pw.Text(
-              'ORDEM DE SERVIÇO',
-              style: pw.TextStyle(
-                fontSize: 18,
-                fontWeight: pw.FontWeight.bold,
-              ),
-            ),
-          ),
-          pw.Divider(),
-          pw.SizedBox(height: 15),
-          pw.Container(
-            padding: pw.EdgeInsets.all(12),
-            decoration: pw.BoxDecoration(
-              border: pw.Border.all(),
-            ),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text('Número da OS: ${widget.dados['numero_os'] ?? 'Sem número'}'),
-                pw.SizedBox(height: 5),
-                pw.Text('Cliente: ${clienteController.text}'),
-                pw.Text('Telefone: ${telefoneController.text}'),
-                pw.Text('IMEI: ${imeiController.text}'),
-              ],
-            ),
-          ),
-          pw.SizedBox(height: 20),
-          pw.Text(
-            'DADOS DO APARELHO',
-            style: pw.TextStyle(
-              fontWeight: pw.FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
-          pw.Divider(),
-          pw.Text('Marca: ${marcaController.text}'),
-          pw.Text('Modelo: ${modeloController.text}'),
-          pw.Text('Peça utilizada: ${widget.dados['peca_usada'] ?? 'Nenhuma'}'),
-          pw.Text('Qtd. peça: ${widget.dados['quantidade_peca'] ?? 0}'),
-          ...checklistPDF(),
-          pw.SizedBox(height: 20),
-          pw.Text(
-            'DEFEITO RELATADO',
-            style: pw.TextStyle(
-              fontWeight: pw.FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
-          pw.Divider(),
-          pw.Text(defeitoController.text),
-          pw.SizedBox(height: 20),
-          pw.Text(
-            'OBSERVAÇÕES',
-            style: pw.TextStyle(
-              fontWeight: pw.FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
-          pw.Divider(),
-          pw.Text(
-            observacaoController.text.isEmpty
-                ? 'Nenhuma observação.'
-                : observacaoController.text,
-          ),
-          pw.SizedBox(height: 20),
-          pw.Container(
-            padding: pw.EdgeInsets.all(12),
-            decoration: pw.BoxDecoration(
-              border: pw.Border.all(),
-            ),
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Text(
-                  'STATUS:',
-                  style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                ),
-                pw.Text(status),
-              ],
-            ),
-          ),
-          pw.SizedBox(height: 12),
-          pw.Container(
-            padding: pw.EdgeInsets.all(12),
-            decoration: pw.BoxDecoration(
-              border: pw.Border.all(),
-            ),
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Text(
-                  'VALOR DO SERVIÇO:',
-                  style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                ),
-                pw.Text('R\$ ${valorController.text}'),
-              ],
-            ),
-          ),
-          pw.SizedBox(height: 30),
-          pw.Text(
-            'TERMO DE RESPONSABILIDADE',
-            style: pw.TextStyle(
-              fontWeight: pw.FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
-          pw.Divider(),
-          pw.Text(
-            'A Elite Cell não se responsabiliza por defeitos ocultos '
-            'não identificados no momento da entrada do aparelho. '
-            'Equipamentos com sinais de oxidação, queda ou violação '
-            'podem apresentar novos defeitos durante ou após o reparo.',
-            textAlign: pw.TextAlign.justify,
-          ),
-          pw.SizedBox(height: 60),
-          pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        margin: pw.EdgeInsets.all(22),
+        build: (context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.Column(
+              pw.Container(
+                width: double.infinity,
+                padding: pw.EdgeInsets.all(10),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(width: 1),
+                ),
+                child: pw.Column(
+                  children: [
+                    pw.Text(
+                      'ELITE CELL',
+                      style: pw.TextStyle(
+                        fontSize: 24,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'ASSISTÊNCIA TÉCNICA',
+                      style: pw.TextStyle(
+                        fontSize: 11,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.SizedBox(height: 6),
+                    pw.Text(
+                      'ORDEM DE SERVIÇO',
+                      style: pw.TextStyle(
+                        fontSize: 18,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              pw.SizedBox(height: 12),
+
+              pw.Row(
                 children: [
-                  pw.Container(
-                    width: 180,
-                    child: pw.Divider(),
+                  pw.Text(
+                    'OS Nº: ${widget.dados['numero_os'] ?? ''}',
+                    style: pw.TextStyle(
+                      fontSize: 11,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
                   ),
-                  pw.Text('Cliente'),
+                  pw.Spacer(),
+                  pw.Text(
+                    'DATA: ____/____/______',
+                    style: pw.TextStyle(fontSize: 10),
+                  ),
                 ],
               ),
-              pw.Column(
+
+              pw.SizedBox(height: 12),
+
+              linha('CLIENTE', clienteController.text),
+              linha('TELEFONE', telefoneController.text),
+              linha(
+                'MARCA / MODELO',
+                '${marcaController.text} ${modeloController.text}',
+              ),
+              linha('IMEI / SÉRIE', imeiController.text),
+
+              pw.SizedBox(height: 8),
+
+              pw.Text(
+                'DEFEITO RELATADO',
+                style: pw.TextStyle(
+                  fontSize: 10,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.Container(
+                height: 42,
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(width: 0.5),
+                ),
+              ),
+
+              pw.SizedBox(height: 10),
+
+              pw.Container(
+                width: double.infinity,
+                padding: pw.EdgeInsets.all(8),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(width: 0.8),
+                ),
+                child: pw.Column(
+                  children: [
+                    pw.Text(
+                      'CHECKLIST DE ENTRADA',
+                      style: pw.TextStyle(
+                        fontSize: 12,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.SizedBox(height: 8),
+                    pw.Wrap(
+                      spacing: 20,
+                      runSpacing: 2,
+                      children: [
+                        check('Liga'),
+                        check('Face ID'),
+                        check('Touch funcionando'),
+                        check('Biometria'),
+                        check('Tela sem manchas'),
+                        check('Câmera frontal'),
+                        check('Wi-Fi'),
+                        check('Câmera traseira'),
+                        check('Bluetooth'),
+                        check('Microfone'),
+                        check('Alto-falante'),
+                        check('Conector de carga'),
+                        check('Oxidado'),
+                        check('Aparelho aberto'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              pw.SizedBox(height: 8),
+
+              pw.Text(
+                'OBSERVAÇÕES',
+                style: pw.TextStyle(
+                  fontSize: 10,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.Container(
+                height: 36,
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(width: 0.5),
+                ),
+              ),
+
+              pw.SizedBox(height: 8),
+
+              pw.Row(
                 children: [
-                  pw.Container(
-                    width: 180,
-                    child: pw.Divider(),
+                  pw.Expanded(
+                    child: pw.Container(
+                      padding: pw.EdgeInsets.all(7),
+                      decoration: pw.BoxDecoration(
+                        border: pw.Border.all(width: 0.7),
+                      ),
+                      child: pw.Text(
+                        'VALOR DO SERVIÇO: R\$ ${valorController.text}',
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   ),
-                  pw.Text('Elite Cell'),
+                  pw.SizedBox(width: 8),
+                  pw.Expanded(
+                    child: pw.Container(
+                      padding: pw.EdgeInsets.all(7),
+                      decoration: pw.BoxDecoration(
+                        border: pw.Border.all(width: 0.7),
+                      ),
+                      child: pw.Text(
+                        'PREVISÃO: ____/____/______',
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
+              ),
+
+              pw.SizedBox(height: 8),
+
+              pw.Text(
+                'TERMO DE GARANTIA: A garantia cobre apenas o serviço executado e/ou peça substituída. Não cobrimos garantia por tela quebrada, trincada, riscada ou arranhada após a entrega, aparelhos com contato com água, umidade ou oxidação, quedas, impactos, mau uso, violação por terceiros ou defeitos não relacionados ao reparo realizado.',
+                style: pw.TextStyle(fontSize: 7),
+                textAlign: pw.TextAlign.justify,
+              ),
+
+              pw.SizedBox(height: 14),
+
+              pw.Row(
+                children: [
+                  pw.Expanded(
+                    child: pw.Column(
+                      children: [
+                        pw.Text(
+                          'ASSINATURA DO CLIENTE',
+                          style: pw.TextStyle(fontSize: 8),
+                        ),
+                        pw.SizedBox(height: 24),
+                        pw.Divider(),
+                      ],
+                    ),
+                  ),
+                  pw.SizedBox(width: 24),
+                  pw.Expanded(
+                    child: pw.Column(
+                      children: [
+                        pw.Text(
+                          'ASSINATURA ELITE CELL',
+                          style: pw.TextStyle(fontSize: 8),
+                        ),
+                        pw.SizedBox(height: 24),
+                        pw.Divider(),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              pw.Spacer(),
+
+              pw.Center(
+                child: pw.Text(
+                  'OBRIGADO PELA PREFERÊNCIA!',
+                  style: pw.TextStyle(
+                    fontSize: 10,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
               ),
             ],
-          ),
-          pw.SizedBox(height: 30),
-          pw.Center(
-            child: pw.Text(
-              'Elite Cell Assistência Técnica',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
 
@@ -373,7 +459,8 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
   }
 
   Future<void> enviarWhatsApp() async {
-    final telefone = telefoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
+    final telefone =
+        telefoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
 
     final mensagem = Uri.encodeComponent(
       'Olá ${clienteController.text}, sua OS ${widget.dados['numero_os'] ?? ''} da Elite Cell está com status: $status.\n\n'
@@ -662,7 +749,8 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
   Widget build(BuildContext context) {
     final numeroOS = widget.dados['numero_os'] ?? 'Sem número';
     final pecaUsada = (widget.dados['peca_usada'] ?? '').toString();
-    final quantidadePeca = (widget.dados['quantidade_peca'] ?? '').toString();
+    final quantidadePeca =
+        (widget.dados['quantidade_peca'] ?? '').toString();
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -744,16 +832,11 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
                 ],
               ),
             ),
-
             SizedBox(height: 16),
-
             galeriaFotos(),
-
             checklistTela(),
-
             infoCard('Peça utilizada', pecaUsada),
             infoCard('Quantidade da peça', quantidadePeca),
-
             campo('Cliente', clienteController),
             campo('Telefone', telefoneController),
             campo('IMEI', imeiController),
@@ -762,9 +845,7 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
             campo('Defeito', defeitoController),
             campo('Valor', valorController),
             campo('Observações', observacaoController),
-
             SizedBox(height: 10),
-
             DropdownButtonFormField<String>(
               value: status,
               dropdownColor: Color(0xFF111111),
@@ -794,9 +875,7 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
                     }
                   : null,
             ),
-
             SizedBox(height: 20),
-
             if (editando)
               botaoAcao(
                 Icons.save,

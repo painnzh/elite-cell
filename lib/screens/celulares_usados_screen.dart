@@ -115,6 +115,31 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
     );
   }
 
+  Future<void> reverterVenda(
+    String id,
+    Map<String, dynamic> item,
+  ) async {
+    await celulares.doc(id).update({
+      'status': 'Disponível',
+      'vendido_em': FieldValue.delete(),
+    });
+
+    await financeiro.add({
+      'descricao':
+          'Estorno venda celular usado - ${item['marca'] ?? ''} ${item['modelo'] ?? ''}',
+      'valor': item['valor_venda'] ?? '0',
+      'tipo': 'Saída',
+      'pagamento': 'Estorno',
+      'data': DateTime.now(),
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Venda revertida e estorno lançado no financeiro'),
+      ),
+    );
+  }
+
   Future<void> enviarWhatsApp(Map<String, dynamic> item) async {
     final texto = Uri.encodeComponent(
       '📱 *${item['marca'] ?? ''} ${item['modelo'] ?? ''}*\n\n'
@@ -589,6 +614,12 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
                       IconButton(
                         icon: Icon(Icons.check_circle, color: Colors.greenAccent),
                         onPressed: () => marcarComoVendido(id, item),
+                      ),
+
+                    if (status == 'Vendido')
+                      IconButton(
+                        icon: Icon(Icons.undo, color: Colors.redAccent),
+                        onPressed: () => reverterVenda(id, item),
                       ),
                   ],
                 ),
