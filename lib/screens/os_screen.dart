@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'os_detalhes_screen.dart';
 
@@ -159,8 +160,14 @@ class _OsScreenState extends State<OsScreen> {
       final fotoTrasUrl = await uploadCloudinary(fotoTras, pasta);
       final fotoImeiUrl = await uploadCloudinary(fotoImei, pasta);
       final fotoAntesDepoisUrl = await uploadCloudinary(fotoAntesDepois, pasta);
+      final usuario = FirebaseAuth.instance.currentUser;
+
+if (usuario == null) {
+  throw Exception('Usuário não autenticado.');
+}
 
       await os.add({
+        'uidEmpresa': usuario.uid,
         'numero_os': numeroOS,
         'cliente': clienteController.text,
         'telefone': telefoneController.text,
