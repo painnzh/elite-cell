@@ -64,10 +64,14 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => DashboardScreen()),
-      );
+Navigator.pushReplacement(
+  context,
+  MaterialPageRoute(
+    builder: (_) => DashboardScreen(
+      empresaId: usuario.uid,
+    ),
+  ),
+);
     } on FirebaseAuthException catch (e) {
       mostrarMensagem(
         e.code == 'invalid-credential' ||

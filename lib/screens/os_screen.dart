@@ -10,6 +10,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'os_detalhes_screen.dart';
 
 class OsScreen extends StatefulWidget {
+  final String empresaId;
+
+  const OsScreen({super.key, required this.empresaId});
+
   @override
   State<OsScreen> createState() => _OsScreenState();
 }
@@ -167,6 +171,7 @@ if (usuario == null) {
 }
 
       await os.add({
+        'empresaId': widget.empresaId,
         'uidEmpresa': usuario.uid,
         'numero_os': numeroOS,
         'cliente': clienteController.text,
@@ -761,7 +766,9 @@ if (usuario == null) {
           ),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: os.snapshots(),
+              stream: os
+                 .where('empresaId', isEqualTo: widget.empresaId)
+                 .snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return Center(

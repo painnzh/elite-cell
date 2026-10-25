@@ -26,6 +26,7 @@ class _CadastroEmpresaScreenState extends State<CadastroEmpresaScreen> {
     );
   }
 
+
   Future<void> cadastrar() async {
     if (carregando) return;
 
@@ -34,7 +35,10 @@ class _CadastroEmpresaScreenState extends State<CadastroEmpresaScreen> {
     final senha = senhaController.text;
     final confirmarSenha = confirmarSenhaController.text;
 
-    if (nome.isEmpty || email.isEmpty || senha.isEmpty) {
+    if (nome.isEmpty ||
+        email.isEmpty ||
+        senha.isEmpty ||
+        confirmarSenha.isEmpty) {
       mensagem('Preencha todos os campos.');
       return;
     }
@@ -52,6 +56,7 @@ class _CadastroEmpresaScreenState extends State<CadastroEmpresaScreen> {
     setState(() => carregando = true);
 
     UserCredential? credencial;
+    bool dadosSalvos = false;
 
     try {
       credencial = await FirebaseAuth.instance
@@ -66,16 +71,32 @@ class _CadastroEmpresaScreenState extends State<CadastroEmpresaScreen> {
         throw Exception('Não foi possível criar a conta.');
       }
 
-   
+      await FirebaseFirestore.instance
+          .collection('empresas')
+          .doc(usuario.uid)
+          .set({
+        'nome': nome,
+        'email': email,
+        'usuarioId': usuario.uid,
+        'uidDono': usuario.uid,
+        'status': 'pendente',
+        'statusAssinatura': 'pendente',
+        'plano': 'mensal',
+        'valorMensal': 19.90,
+        'criadoEm': FieldValue.serverTimestamp(),
+      });
+
+      dadosSalvos = true;
+
       if (!mounted) return;
 
       mensagem(
-        'Cadastro criado! Aguarde a confirmação da assinatura.',
+        'Conta criada! A assinatura está pendente de confirmação.',
       );
 
       Navigator.pop(context);
     } on FirebaseAuthException catch (e) {
-      if (credencial?.user != null) {
+      if (credencial?.user != null && !dadosSalvos) {
         try {
           await credencial!.user!.delete();
         } catch (_) {}
@@ -91,11 +112,20 @@ class _CadastroEmpresaScreenState extends State<CadastroEmpresaScreen> {
         mensagem('Não foi possível criar a conta.');
       }
     } catch (e) {
+      if (credencial?.user != null && !dadosSalvos) {
+        try {
+          await credencial!.user!.delete();
+        } catch (_) {}
+      }
+
       mensagem(
-        'Não foi possível concluir o cadastro. Verifique a conexão e tente novamente.',
+        'Não foi possível concluir o cadastro. '
+        'Verifique a conexão e tente novamente.',
       );
     } finally {
-      if (mounted) setState(() => carregando = false);
+      if (mounted) {
+        setState(() => carregando = false);
+      }
     }
   }
 

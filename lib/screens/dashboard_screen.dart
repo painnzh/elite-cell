@@ -13,6 +13,10 @@ import 'celulares_usados_screen.dart';
 import 'tecnicos_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
+  final String empresaId;
+
+  DashboardScreen({super.key, required this.empresaId});
+
   final Color dourado = Color(0xFFD4AF37);
 
   final clientes = FirebaseFirestore.instance.collection('clientes');
@@ -785,7 +789,7 @@ class DashboardScreen extends StatelessWidget {
                                           context,
                                           Icons.build,
                                           'Ordens de Serviço',
-                                          OsScreen(),
+                                          OsScreen(empresaId: empresaId),
                                         ),
                                         menuCard(
                                           context,
@@ -799,17 +803,17 @@ class DashboardScreen extends StatelessWidget {
                                           'Catálogo Cliente',
                                           CatalogoClienteScreen(),
                                         ),
-                                        menuCard(
-                                          context,
-                                          Icons.people,
-                                          'Clientes',
-                                          ClientesScreen(),
-                                        ),
+					menuCard(
+ 					  context,
+ 					  Icons.people,
+					  'Clientes',
+					  ClientesScreen(empresaId: empresaId),
+					),
                                         menuCard(
                                           context,
                                           Icons.inventory,
                                           'Estoque',
-                                          EstoqueScreen(),
+                                          EstoqueScreen(empresaId: empresaId),
                                         ),
                                         menuCard(
                                           context,

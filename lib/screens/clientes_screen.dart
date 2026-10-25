@@ -2,6 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class ClientesScreen extends StatefulWidget {
+  final String empresaId;
+
+  const ClientesScreen({super.key, required this.empresaId});
+
   @override
   State<ClientesScreen> createState() => _ClientesScreenState();
 }
@@ -20,6 +24,7 @@ class _ClientesScreenState extends State<ClientesScreen> {
 
   Future<void> salvarCliente() async {
     await clientes.add({
+      'empresaId': widget.empresaId,
       'nome': nomeController.text,
       'telefone': telefoneController.text,
       'email': emailController.text,
@@ -259,7 +264,9 @@ class _ClientesScreenState extends State<ClientesScreen> {
 
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: clientes.snapshots(),
+		stream: clientes
+  	        .where('empresaId', isEqualTo: widget.empresaId)
+                .snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return Center(

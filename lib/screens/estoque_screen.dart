@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'estoque_detalhes_screen.dart';
 
 class EstoqueScreen extends StatefulWidget {
+  final String empresaId;
+
+  const EstoqueScreen({super.key, required this.empresaId});
+
   @override
   State<EstoqueScreen> createState() => _EstoqueScreenState();
 }
@@ -27,6 +31,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
 
   Future<void> salvarPeca() async {
     await estoque.add({
+      'empresaId': widget.empresaId,
       'nome': nomeController.text,
       'modelo': modeloController.text,
       'quantidade': quantidadeController.text,
@@ -204,7 +209,9 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
 
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: estoque.snapshots(),
+              stream: estoque
+                  .where('empresaId', isEqualTo: widget.empresaId)
+ 		  .snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return Center(
