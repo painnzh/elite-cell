@@ -795,7 +795,7 @@ class DashboardScreen extends StatelessWidget {
                                           context,
                                           Icons.engineering,
                                           'Técnicos',
-                                          TecnicosScreen(),
+                                          TecnicosScreen(empresaId: empresaId),
                                         ),
                                         menuCard(
                                           context,

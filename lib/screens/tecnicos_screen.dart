@@ -2,6 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class TecnicosScreen extends StatefulWidget {
+  final String empresaId;
+
+  const TecnicosScreen({super.key, required this.empresaId});
+
   @override
   State<TecnicosScreen> createState() => _TecnicosScreenState();
 }
@@ -16,6 +20,7 @@ class _TecnicosScreenState extends State<TecnicosScreen> {
 
   Future<void> salvarTecnico() async {
     await tecnicos.add({
+      'empresaId': widget.empresaId,
       'nome': nomeController.text,
       'meta_mensal': metaController.text,
       'data': DateTime.now(),
@@ -116,7 +121,10 @@ class _TecnicosScreenState extends State<TecnicosScreen> {
         child: Icon(Icons.add),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: tecnicos.orderBy('nome').snapshots(),
+        stream: tecnicos
+            .where('empresaId', isEqualTo: widget.empresaId)
+            .orderBy('nome')
+            .snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return Center(child: CircularProgressIndicator(color: dourado));

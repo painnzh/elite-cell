@@ -493,6 +493,7 @@ if (usuario == null) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('tecnicos')
+          .where('empresaId', isEqualTo: widget.empresaId)
           .orderBy('nome')
           .snapshots(),
       builder: (context, snapshot) {
