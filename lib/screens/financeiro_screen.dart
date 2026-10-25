@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 class FinanceiroScreen extends StatefulWidget {
+  final String empresaId;
+
+  const FinanceiroScreen({super.key, required this.empresaId});
+
   @override
   State<FinanceiroScreen> createState() => _FinanceiroScreenState();
 }
@@ -20,13 +24,14 @@ class _FinanceiroScreenState extends State<FinanceiroScreen> {
   final financeiro = FirebaseFirestore.instance.collection('financeiro');
 
   Future<void> salvarLancamento() async {
-    await financeiro.add({
-      'descricao': descricaoController.text,
-      'valor': valorController.text,
-      'tipo': tipoSelecionado,
-      'pagamento': pagamentoSelecionado,
-      'data': DateTime.now(),
-    });
+  await financeiro.add({
+    'empresaId': widget.empresaId,
+    'descricao': descricaoController.text,
+    'valor': valorController.text,
+    'tipo': tipoSelecionado,
+    'pagamento': pagamentoSelecionado,
+    'data': DateTime.now(),
+});
 
     descricaoController.clear();
     valorController.clear();
@@ -339,13 +344,29 @@ class _FinanceiroScreenState extends State<FinanceiroScreen> {
       ),
 
       body: StreamBuilder<QuerySnapshot>(
-        stream: financeiro.orderBy('data', descending: true).snapshots(),
+    stream: financeiro
+        .where('empresaId', isEqualTo: widget.empresaId)
+        .snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return Center(
-              child: CircularProgressIndicator(color: dourado),
-            );
-          }
+if (snapshot.hasError) {
+  debugPrint('Erro ao carregar financeiro: ${snapshot.error}');
+
+  return Center(
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Text(
+        'Erro ao carregar financeiro:\n${snapshot.error}',
+        textAlign: TextAlign.center,
+      ),
+    ),
+  );
+}
+
+if (snapshot.connectionState == ConnectionState.waiting) {
+  return Center(
+    child: CircularProgressIndicator(color: dourado),
+  );
+}
 
           final todos = snapshot.data!.docs;
 

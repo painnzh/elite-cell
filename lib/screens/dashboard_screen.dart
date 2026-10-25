@@ -825,13 +825,13 @@ class DashboardScreen extends StatelessWidget {
                                           context,
                                           Icons.attach_money,
                                           'Financeiro',
-                                          FinanceiroScreen(),
+                                          FinanceiroScreen(empresaId: empresaId),
                                         ),
                                         menuCard(
                                           context,
                                           Icons.verified,
                                           'Garantias',
-                                          GarantiaScreen(),
+                                          GarantiaScreen(empresaId: empresaId),
                                         ),
                                         menuCard(
                                           context,

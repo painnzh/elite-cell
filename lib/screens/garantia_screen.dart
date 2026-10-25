@@ -4,6 +4,10 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 class GarantiaScreen extends StatefulWidget {
+  final String empresaId;
+
+  const GarantiaScreen({super.key, required this.empresaId});
+
   @override
   State<GarantiaScreen> createState() => _GarantiaScreenState();
 }
@@ -29,13 +33,14 @@ class _GarantiaScreenState extends State<GarantiaScreen> {
     final vencimento = DateTime.now().add(Duration(days: dias));
 
     await garantias.add({
+      'empresaId': widget.empresaId,
       'cliente': clienteController.text,
       'aparelho': aparelhoController.text,
       'servico': servicoController.text,
       'garantia': garantiaSelecionada,
       'vencimento': vencimento,
-      'data': DateTime.now(),
-    });
+  'data': DateTime.now(),
+});
 
     clienteController.clear();
     aparelhoController.clear();
@@ -44,13 +49,27 @@ class _GarantiaScreenState extends State<GarantiaScreen> {
     Navigator.pop(context);
   }
 
-  Future<void> excluirGarantia(String id) async {
-    await garantias.doc(id).delete();
+Future<void> excluirGarantia(String id) async {
+  final documento = await garantias.doc(id).get();
 
+  if (!documento.exists ||
+      documento.data()?['empresaId'] != widget.empresaId) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Garantia excluída com sucesso')),
+      SnackBar(
+        content: Text('Garantia não encontrada nesta empresa'),
+      ),
     );
+    return;
   }
+
+  await garantias.doc(id).delete();
+
+  if (!mounted) return;
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text('Garantia excluída com sucesso')),
+  );
+}
 
   Future<void> gerarPDF(Map<String, dynamic> item) async {
     final pdf = pw.Document();
@@ -293,7 +312,9 @@ class _GarantiaScreenState extends State<GarantiaScreen> {
 
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: garantias.snapshots(),
+              stream: garantias
+                  .where('empresaId', isEqualTo: widget.empresaId)
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return Center(
