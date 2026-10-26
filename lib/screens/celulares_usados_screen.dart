@@ -32,6 +32,7 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
   final observacaoController = TextEditingController();
 
   String statusSelecionado = 'Disponível';
+  bool publicadoNoCatalogo = false;
   String busca = '';
 
   File? fotoCelular;
@@ -54,6 +55,7 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
     vendaController.text = item?['valor_venda']?.toString() ?? '';
     observacaoController.text = item?['observacao']?.toString() ?? '';
     statusSelecionado = item?['status']?.toString() ?? 'Disponível';
+    publicadoNoCatalogo = item?['publicadoCatalogo'] == true;
     fotoCelular = null;
   }
 
@@ -125,6 +127,7 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
       'valor_venda': vendaController.text,
       'observacao': observacaoController.text,
       'status': statusSelecionado,
+      'publicadoCatalogo': publicadoNoCatalogo,
       'foto_path': fotoCelular?.path ?? fotoPathOriginal ?? '',
       'empresaId': widget.empresaId,
     };
@@ -580,6 +583,25 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
                       onChanged: (valor) {
                         setState(() {
                           statusSelecionado = valor!;
+                        });
+                      },
+                    ),
+
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      activeThumbColor: dourado,
+                      title: Text(
+                        'Divulgar no catálogo',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      subtitle: Text(
+                        'Exibe o aparelho disponível no catálogo do cliente.',
+                        style: TextStyle(color: Colors.white60),
+                      ),
+                      value: publicadoNoCatalogo,
+                      onChanged: (valor) {
+                        setModalState(() {
+                          publicadoNoCatalogo = valor;
                         });
                       },
                     ),

@@ -90,7 +90,8 @@ class CatalogoClienteScreen extends StatelessWidget {
 
           final aparelhos = snapshot.data!.docs.where((doc) {
             final item = doc.data() as Map<String, dynamic>;
-            return item['status'] == 'Disponível';
+            return item['status'] == 'Disponível' &&
+                item['publicadoCatalogo'] == true;
           }).toList();
 
           if (aparelhos.isEmpty) {
