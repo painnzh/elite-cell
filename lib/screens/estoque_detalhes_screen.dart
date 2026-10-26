@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 
 class EstoqueDetalhesScreen extends StatefulWidget {
   final Map dados;
+  final String empresaId;
 
   const EstoqueDetalhesScreen({
     super.key,
     required this.dados,
+    required this.empresaId,
   });
 
   @override
@@ -30,11 +32,17 @@ class _EstoqueDetalhesScreenState extends State<EstoqueDetalhesScreen> {
     super.initState();
 
     nomeController = TextEditingController(text: widget.dados['nome'] ?? '');
-    modeloController = TextEditingController(text: widget.dados['modelo'] ?? '');
-    quantidadeController = TextEditingController(text: widget.dados['quantidade'] ?? '');
+    modeloController = TextEditingController(
+      text: widget.dados['modelo'] ?? '',
+    );
+    quantidadeController = TextEditingController(
+      text: widget.dados['quantidade'] ?? '',
+    );
     custoController = TextEditingController(text: widget.dados['custo'] ?? '');
     vendaController = TextEditingController(text: widget.dados['venda'] ?? '');
-    fornecedorController = TextEditingController(text: widget.dados['fornecedor'] ?? '');
+    fornecedorController = TextEditingController(
+      text: widget.dados['fornecedor'] ?? '',
+    );
   }
 
   double converterValor(String valor) {
@@ -69,11 +77,9 @@ class _EstoqueDetalhesScreenState extends State<EstoqueDetalhesScreen> {
       editando = false;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Peça atualizada com sucesso'),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Peça atualizada com sucesso')));
   }
 
   Future<void> excluirPeca() async {
@@ -83,11 +89,9 @@ class _EstoqueDetalhesScreenState extends State<EstoqueDetalhesScreen> {
 
     Navigator.pop(context);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Peça excluída com sucesso'),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Peça excluída com sucesso')));
   }
 
   InputDecoration decoracaoCampo(String label) {
@@ -127,28 +131,17 @@ class _EstoqueDetalhesScreenState extends State<EstoqueDetalhesScreen> {
       child: ListTile(
         title: Text(
           titulo,
-          style: TextStyle(
-            color: dourado,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: dourado, fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
           controller.text,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-          ),
+          style: TextStyle(color: Colors.white, fontSize: 16),
         ),
       ),
     );
   }
 
-  Widget resumoCard(
-    IconData icon,
-    String titulo,
-    String valor,
-    Color cor,
-  ) {
+  Widget resumoCard(IconData icon, String titulo, String valor, Color cor) {
     return Card(
       color: Color(0xFF111111),
       shape: RoundedRectangleBorder(
@@ -158,17 +151,9 @@ class _EstoqueDetalhesScreenState extends State<EstoqueDetalhesScreen> {
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: cor,
-          child: Icon(
-            icon,
-            color: Colors.black,
-          ),
+          child: Icon(icon, color: Colors.black),
         ),
-        title: Text(
-          titulo,
-          style: TextStyle(
-            color: Colors.white70,
-          ),
-        ),
+        title: Text(titulo, style: TextStyle(color: Colors.white70)),
         subtitle: Text(
           valor,
           style: TextStyle(
@@ -195,20 +180,14 @@ class _EstoqueDetalhesScreenState extends State<EstoqueDetalhesScreen> {
         backgroundColor: Colors.black,
         centerTitle: true,
         iconTheme: IconThemeData(color: dourado),
-        title: Image.asset(
-          'assets/images/elite_cell_logo.png',
-          height: 45,
-        ),
+        title: Image.asset('assets/images/elite_cell_logo.png', height: 45),
         actions: [
           IconButton(
             icon: Icon(Icons.delete, color: Colors.redAccent),
             onPressed: excluirPeca,
           ),
           IconButton(
-            icon: Icon(
-              editando ? Icons.save : Icons.edit,
-              color: dourado,
-            ),
+            icon: Icon(editando ? Icons.save : Icons.edit, color: dourado),
             onPressed: () {
               if (editando) {
                 salvarAlteracoes();
@@ -232,10 +211,7 @@ class _EstoqueDetalhesScreenState extends State<EstoqueDetalhesScreen> {
               decoration: BoxDecoration(
                 color: Color(0xFF111111),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: corPrincipal,
-                  width: 1.4,
-                ),
+                border: Border.all(color: corPrincipal, width: 1.4),
                 boxShadow: [
                   BoxShadow(
                     color: corPrincipal.withOpacity(0.25),
@@ -246,11 +222,7 @@ class _EstoqueDetalhesScreenState extends State<EstoqueDetalhesScreen> {
               ),
               child: Column(
                 children: [
-                  Icon(
-                    Icons.inventory,
-                    size: 52,
-                    color: corPrincipal,
-                  ),
+                  Icon(Icons.inventory, size: 52, color: corPrincipal),
 
                   SizedBox(height: 10),
 
@@ -319,9 +291,7 @@ class _EstoqueDetalhesScreenState extends State<EstoqueDetalhesScreen> {
                   ),
                   child: Text(
                     'Salvar alterações',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
               ),

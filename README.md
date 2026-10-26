@@ -205,7 +205,10 @@ Clientes, estoque, ordens de serviço, técnicos, garantias e financeiro já rec
 - `CatalogoClienteScreen` consulta a coleção inteira e filtra a disponibilidade apenas no cliente.
 - O dashboard ainda abre essas duas telas sem repassar `empresaId`.
 - Vendas de usados criam lançamentos financeiros sem `empresaId`.
-- `firebase.json` referencia `firestore.rules`, mas esse arquivo não está presente neste checkout; por isso, as regras implantadas não puderam ser avaliadas nesta documentação.
+- `firestore.rules` protege as coleções operacionais por `empresaId`, exige uma empresa ativa e impede troca de empresa em atualizações.
+- O histórico técnico e o termo de compra do dossiê são imutáveis após o registro. Isso preserva a evidência operacional do MVP.
+- `firestore.indexes.json` define os índices para consultas de estoque e técnicos filtradas por empresa e ordenadas por nome.
+- As regras e os índices só passam a valer no ambiente Firebase após revisão e publicação explícita.
 
 > Filtrar consultas na interface não é um mecanismo de autorização. As regras do Firestore precisam validar a identidade autenticada, a posse do `empresaId` e os dados permitidos em cada operação. Não use regras permissivas como `allow read, write: if true`.
 
@@ -238,7 +241,7 @@ Cada aparelho possui um dossiê acessível pelo ícone de pasta na listagem. O r
 
 ### Direção de evolução recomendada
 
-1. Versionar e implantar regras do Firestore que protejam o dossiê, o termo e as subcoleções por `empresaId`.
+1. Publicar as regras e os índices em ambiente de homologação, validando os fluxos com duas empresas distintas.
 2. Migrar imagens para um armazenamento compartilhado, como Firebase Storage, guardando URLs em vez de caminhos locais.
 3. Ligar peças e mão de obra a movimentações de estoque e financeiro após validar o fluxo contábil.
 4. Gerar PDF do termo, preservar versões e integrar assinatura eletrônica quando a política jurídica for definida.
@@ -250,7 +253,8 @@ Cada aparelho possui um dossiê acessível pelo ícone de pasta na listagem. O r
 ### Prioridade alta
 
 - [ ] Concluir o isolamento por `empresaId` em todos os módulos remanescentes.
-- [ ] Versionar, revisar e implantar regras seguras do Firestore.
+- [x] Versionar regras seguras do Firestore e índices das consultas multiempresa.
+- [ ] Publicar regras e índices em homologação após validar acessos de duas empresas.
 - [x] Integrar vendas de usados ao financeiro de forma atômica e idempotente.
 - [x] Adicionar edição, exclusão e validação de aparelhos usados.
 - [x] Criar dossiê de aquisição e recondicionamento com custos e margem.
@@ -266,7 +270,7 @@ Cada aparelho possui um dossiê acessível pelo ícone de pasta na listagem. O r
 - [ ] Cobrir cenários com duas empresas, incluindo tentativas de acesso indevido.
 - [ ] Padronizar valores monetários, datas e validações de formulário.
 - [ ] Melhorar mensagens de erro, carregamento e estados vazios.
-- [ ] Implementar índices necessários do Firestore à medida que consultas compostas forem adicionadas.
+- [x] Implementar índices necessários para estoque e técnicos por empresa.
 - [ ] Revisar codificação de caracteres e padronizar arquivos em UTF-8.
 - [ ] Documentar processos de backup, restauração e publicação.
 
