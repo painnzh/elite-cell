@@ -80,10 +80,7 @@ class _OsScreenState extends State<OsScreen> {
   ) async {
     final picker = ImagePicker();
 
-    final imagem = await picker.pickImage(
-      source: origem,
-      imageQuality: 75,
-    );
+    final imagem = await picker.pickImage(source: origem, imageQuality: 75);
 
     if (imagem != null) {
       setState(() {
@@ -109,12 +106,7 @@ class _OsScreenState extends State<OsScreen> {
     request.fields['upload_preset'] = uploadPreset;
     request.fields['folder'] = pasta;
 
-    request.files.add(
-      await http.MultipartFile.fromPath(
-        'file',
-        arquivo.path,
-      ),
-    );
+    request.files.add(await http.MultipartFile.fromPath('file', arquivo.path));
 
     final response = await request.send();
     final resposta = await response.stream.bytesToString();
@@ -136,6 +128,8 @@ class _OsScreenState extends State<OsScreen> {
 
     try {
       final contadorRef = FirebaseFirestore.instance
+          .collection('empresas')
+          .doc(widget.empresaId)
           .collection('configuracoes')
           .doc('contador_os');
 
@@ -152,9 +146,7 @@ class _OsScreenState extends State<OsScreen> {
 
         novoNumero = ultimoNumero + 1;
 
-        transaction.set(contadorRef, {
-          'ultimo_numero': novoNumero,
-        });
+        transaction.set(contadorRef, {'ultimo_numero': novoNumero});
       });
 
       final numeroOS = 'OS-${novoNumero.toString().padLeft(6, '0')}';
@@ -166,9 +158,9 @@ class _OsScreenState extends State<OsScreen> {
       final fotoAntesDepoisUrl = await uploadCloudinary(fotoAntesDepois, pasta);
       final usuario = FirebaseAuth.instance.currentUser;
 
-if (usuario == null) {
-  throw Exception('Usuário não autenticado.');
-}
+      if (usuario == null) {
+        throw Exception('Usuário não autenticado.');
+      }
 
       await os.add({
         'empresaId': widget.empresaId,
@@ -265,9 +257,9 @@ if (usuario == null) {
         salvando = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao salvar OS: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro ao salvar OS: $e')));
     }
   }
 
@@ -292,7 +284,8 @@ if (usuario == null) {
       child: TextField(
         controller: controller,
         style: TextStyle(color: Colors.white),
-        keyboardType: label.toLowerCase().contains('valor') ||
+        keyboardType:
+            label.toLowerCase().contains('valor') ||
                 label.toLowerCase().contains('desconto') ||
                 label.toLowerCase().contains('quantidade')
             ? TextInputType.number
@@ -319,14 +312,14 @@ if (usuario == null) {
             ),
           ),
           onPressed: () {
-            double valorPeca = double.tryParse(
+            double valorPeca =
+                double.tryParse(
                   valorPecaController.text.replaceAll(',', '.'),
                 ) ??
                 0;
 
-            double desconto = double.tryParse(
-                  descontoController.text.replaceAll(',', '.'),
-                ) ??
+            double desconto =
+                double.tryParse(descontoController.text.replaceAll(',', '.')) ??
                 0;
 
             double valorFinal = calcularOrcamento(valorPeca, desconto);
@@ -340,19 +333,12 @@ if (usuario == null) {
     );
   }
 
-  Widget itemChecklist(
-    String titulo,
-    bool valor,
-    Function(bool?) onChanged,
-  ) {
+  Widget itemChecklist(String titulo, bool valor, Function(bool?) onChanged) {
     return CheckboxListTile(
       value: valor,
       activeColor: dourado,
       checkColor: Colors.black,
-      title: Text(
-        titulo,
-        style: TextStyle(color: Colors.white),
-      ),
+      title: Text(titulo, style: TextStyle(color: Colors.white)),
       onChanged: onChanged,
       controlAffinity: ListTileControlAffinity.leading,
     );
@@ -377,19 +363,71 @@ if (usuario == null) {
               fontSize: 18,
             ),
           ),
-          itemChecklist('Liga', chkLiga, (v) => setModalState(() => chkLiga = v!)),
-          itemChecklist('Touch funcionando', chkTouch, (v) => setModalState(() => chkTouch = v!)),
-          itemChecklist('Tela sem manchas', chkTela, (v) => setModalState(() => chkTela = v!)),
-          itemChecklist('Face ID', chkFaceId, (v) => setModalState(() => chkFaceId = v!)),
-          itemChecklist('Biometria', chkBiometria, (v) => setModalState(() => chkBiometria = v!)),
-          itemChecklist('Câmera frontal', chkCameraFrontal, (v) => setModalState(() => chkCameraFrontal = v!)),
-          itemChecklist('Câmera traseira', chkCameraTraseira, (v) => setModalState(() => chkCameraTraseira = v!)),
-          itemChecklist('Wi-Fi', chkWifi, (v) => setModalState(() => chkWifi = v!)),
-          itemChecklist('Bluetooth', chkBluetooth, (v) => setModalState(() => chkBluetooth = v!)),
-          itemChecklist('Microfone', chkMicrofone, (v) => setModalState(() => chkMicrofone = v!)),
-          itemChecklist('Alto-falante', chkAltoFalante, (v) => setModalState(() => chkAltoFalante = v!)),
-          itemChecklist('Conector de carga', chkConector, (v) => setModalState(() => chkConector = v!)),
-          itemChecklist('Aparelho oxidado', chkOxidado, (v) => setModalState(() => chkOxidado = v!)),
+          itemChecklist(
+            'Liga',
+            chkLiga,
+            (v) => setModalState(() => chkLiga = v!),
+          ),
+          itemChecklist(
+            'Touch funcionando',
+            chkTouch,
+            (v) => setModalState(() => chkTouch = v!),
+          ),
+          itemChecklist(
+            'Tela sem manchas',
+            chkTela,
+            (v) => setModalState(() => chkTela = v!),
+          ),
+          itemChecklist(
+            'Face ID',
+            chkFaceId,
+            (v) => setModalState(() => chkFaceId = v!),
+          ),
+          itemChecklist(
+            'Biometria',
+            chkBiometria,
+            (v) => setModalState(() => chkBiometria = v!),
+          ),
+          itemChecklist(
+            'Câmera frontal',
+            chkCameraFrontal,
+            (v) => setModalState(() => chkCameraFrontal = v!),
+          ),
+          itemChecklist(
+            'Câmera traseira',
+            chkCameraTraseira,
+            (v) => setModalState(() => chkCameraTraseira = v!),
+          ),
+          itemChecklist(
+            'Wi-Fi',
+            chkWifi,
+            (v) => setModalState(() => chkWifi = v!),
+          ),
+          itemChecklist(
+            'Bluetooth',
+            chkBluetooth,
+            (v) => setModalState(() => chkBluetooth = v!),
+          ),
+          itemChecklist(
+            'Microfone',
+            chkMicrofone,
+            (v) => setModalState(() => chkMicrofone = v!),
+          ),
+          itemChecklist(
+            'Alto-falante',
+            chkAltoFalante,
+            (v) => setModalState(() => chkAltoFalante = v!),
+          ),
+          itemChecklist(
+            'Conector de carga',
+            chkConector,
+            (v) => setModalState(() => chkConector = v!),
+          ),
+          itemChecklist(
+            'Aparelho oxidado',
+            chkOxidado,
+            (v) => setModalState(() => chkOxidado = v!),
+          ),
         ],
       ),
     );
@@ -413,10 +451,7 @@ if (usuario == null) {
         children: [
           Text(
             titulo,
-            style: TextStyle(
-              color: dourado,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(color: dourado, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 8),
           if (arquivo != null)
@@ -450,11 +485,7 @@ if (usuario == null) {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () async {
-                    await escolherFoto(
-                      ImageSource.camera,
-                      tipo,
-                      setModalState,
-                    );
+                    await escolherFoto(ImageSource.camera, tipo, setModalState);
                   },
                   icon: Icon(Icons.camera_alt),
                   label: Text('Câmera'),
@@ -547,10 +578,7 @@ if (usuario == null) {
           builder: (context, setModalState) {
             return AlertDialog(
               backgroundColor: Color(0xFF111111),
-              title: Text(
-                'Nova OS',
-                style: TextStyle(color: dourado),
-              ),
+              title: Text('Nova OS', style: TextStyle(color: dourado)),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -562,15 +590,9 @@ if (usuario == null) {
                     campoFormulario(modeloController, 'Modelo'),
                     campoFormulario(defeitoController, 'Defeito'),
 
-                    campoFormulario(
-                      valorPecaController,
-                      'Valor da peça',
-                    ),
+                    campoFormulario(valorPecaController, 'Valor da peça'),
 
-                    campoFormulario(
-                      descontoController,
-                      'Desconto (%)',
-                    ),
+                    campoFormulario(descontoController, 'Desconto (%)'),
 
                     botaoCalcularOrcamento(setModalState),
 
@@ -585,6 +607,7 @@ if (usuario == null) {
                     StreamBuilder<QuerySnapshot>(
                       stream: FirebaseFirestore.instance
                           .collection('estoque')
+                          .where('empresaId', isEqualTo: widget.empresaId)
                           .orderBy('nome')
                           .snapshots(),
                       builder: (context, snapshot) {
@@ -624,10 +647,30 @@ if (usuario == null) {
 
                     SizedBox(height: 12),
 
-                    previewFoto('Foto frontal', fotoFrente, 'frente', setModalState),
-                    previewFoto('Foto traseira', fotoTras, 'tras', setModalState),
-                    previewFoto('Foto do IMEI', fotoImei, 'imei', setModalState),
-                    previewFoto('Foto antes/depois', fotoAntesDepois, 'antesDepois', setModalState),
+                    previewFoto(
+                      'Foto frontal',
+                      fotoFrente,
+                      'frente',
+                      setModalState,
+                    ),
+                    previewFoto(
+                      'Foto traseira',
+                      fotoTras,
+                      'tras',
+                      setModalState,
+                    ),
+                    previewFoto(
+                      'Foto do IMEI',
+                      fotoImei,
+                      'imei',
+                      setModalState,
+                    ),
+                    previewFoto(
+                      'Foto antes/depois',
+                      fotoAntesDepois,
+                      'antesDepois',
+                      setModalState,
+                    ),
 
                     SizedBox(height: 10),
 
@@ -636,20 +679,21 @@ if (usuario == null) {
                       dropdownColor: Color(0xFF111111),
                       style: TextStyle(color: Colors.white),
                       decoration: decoracaoCampo('Status'),
-                      items: [
-                        'Em análise',
-                        'Aprovado',
-                        'Aguardando peça',
-                        'Em reparo',
-                        'Pronto',
-                        'Entregue',
-                        'Cancelado',
-                      ].map((status) {
-                        return DropdownMenuItem(
-                          value: status,
-                          child: Text(status),
-                        );
-                      }).toList(),
+                      items:
+                          [
+                            'Em análise',
+                            'Aprovado',
+                            'Aguardando peça',
+                            'Em reparo',
+                            'Pronto',
+                            'Entregue',
+                            'Cancelado',
+                          ].map((status) {
+                            return DropdownMenuItem(
+                              value: status,
+                              child: Text(status),
+                            );
+                          }).toList(),
                       onChanged: (valor) {
                         setModalState(() {
                           statusSelecionado = valor!;
@@ -712,9 +756,7 @@ if (usuario == null) {
         .toString();
 
     if (fotoUrl.isNotEmpty) {
-      return CircleAvatar(
-        backgroundImage: NetworkImage(fotoUrl),
-      );
+      return CircleAvatar(backgroundImage: NetworkImage(fotoUrl));
     }
 
     return Icon(Icons.build, color: dourado);
@@ -726,10 +768,7 @@ if (usuario == null) {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
-        title: Text(
-          'Ordens de Serviço',
-          style: TextStyle(color: dourado),
-        ),
+        title: Text('Ordens de Serviço', style: TextStyle(color: dourado)),
         centerTitle: true,
         iconTheme: IconThemeData(color: dourado),
       ),
@@ -768,8 +807,8 @@ if (usuario == null) {
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: os
-                 .where('empresaId', isEqualTo: widget.empresaId)
-                 .snapshots(),
+                  .where('empresaId', isEqualTo: widget.empresaId)
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return Center(
@@ -789,10 +828,9 @@ if (usuario == null) {
                           .toString()
                           .toLowerCase()
                           .contains(texto) ||
-                      (dadosOs['imei'] ?? '')
-                          .toString()
-                          .toLowerCase()
-                          .contains(texto) ||
+                      (dadosOs['imei'] ?? '').toString().toLowerCase().contains(
+                        texto,
+                      ) ||
                       (dadosOs['modelo'] ?? '')
                           .toString()
                           .toLowerCase()
@@ -819,7 +857,10 @@ if (usuario == null) {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => OsDetalhesScreen(dados: dadosOs),
+                            builder: (_) => OsDetalhesScreen(
+                              dados: dadosOs,
+                              empresaId: widget.empresaId,
+                            ),
                           ),
                         );
                       },

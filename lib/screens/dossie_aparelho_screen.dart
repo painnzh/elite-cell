@@ -414,7 +414,9 @@ class _DossieAparelhoScreenState extends State<DossieAparelhoScreen> {
                   runSpacing: 8,
                   children: [
                     OutlinedButton.icon(
-                      onPressed: registrarTermo,
+                      onPressed: dados['termoCompraRegistrado'] == true
+                          ? null
+                          : registrarTermo,
                       icon: Icon(
                         dados['termoCompraRegistrado'] == true
                             ? Icons.verified
