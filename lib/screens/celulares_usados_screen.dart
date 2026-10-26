@@ -6,6 +6,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class CelularesUsadosScreen extends StatefulWidget {
+  final String empresaId;
+
+  const CelularesUsadosScreen({
+    super.key,
+    required this.empresaId,
+  });
+
   @override
   State<CelularesUsadosScreen> createState() => _CelularesUsadosScreenState();
 }
@@ -68,6 +75,7 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
       'observacao': observacaoController.text,
       'status': statusSelecionado,
       'foto_path': fotoCelular?.path ?? '',
+      'empresaId': widget.empresaId,
       'data': DateTime.now(),
     });
 
@@ -105,6 +113,7 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
       'valor': item['valor_venda'] ?? '0',
       'tipo': 'Entrada',
       'pagamento': 'Pix',
+      'empresaId': widget.empresaId,
       'data': DateTime.now(),
     });
 
@@ -130,6 +139,7 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
       'valor': item['valor_venda'] ?? '0',
       'tipo': 'Saída',
       'pagamento': 'Estorno',
+      'empresaId': widget.empresaId,
       'data': DateTime.now(),
     });
 
@@ -682,7 +692,10 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
 
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: celulares.orderBy('data', descending: true).snapshots(),
+              stream: celulares
+                  .where('empresaId', isEqualTo: widget.empresaId)
+                  .orderBy('data', descending: true)
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return Center(

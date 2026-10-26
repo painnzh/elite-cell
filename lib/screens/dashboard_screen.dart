@@ -801,7 +801,9 @@ class DashboardScreen extends StatelessWidget {
                                           context,
                                           Icons.storefront,
                                           'Catálogo Cliente',
-                                          CatalogoClienteScreen(),
+                                          CatalogoClienteScreen(
+                                            empresaId: empresaId,
+                                          ),
                                         ),
 					menuCard(
  					  context,
@@ -819,7 +821,9 @@ class DashboardScreen extends StatelessWidget {
                                           context,
                                           Icons.phone_android,
                                           'Celulares Usados',
-                                          CelularesUsadosScreen(),
+                                          CelularesUsadosScreen(
+                                            empresaId: empresaId,
+                                          ),
                                         ),
                                         menuCard(
                                           context,
