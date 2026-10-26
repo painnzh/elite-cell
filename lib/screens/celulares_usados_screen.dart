@@ -98,56 +98,121 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
     Navigator.pop(context);
   }
 
-  Future<void> marcarComoVendido(
-    String id,
-    Map<String, dynamic> item,
-  ) async {
-    await celulares.doc(id).update({
-      'status': 'Vendido',
-      'vendido_em': DateTime.now(),
-    });
+  Future<void> marcarComoVendido(String id) async {
+    final celular = celulares.doc(id);
+    final lancamentoVenda = financeiro.doc();
+    final agora = Timestamp.now();
 
-    await financeiro.add({
-      'descricao':
-          'Venda celular usado - ${item['marca'] ?? ''} ${item['modelo'] ?? ''}',
-      'valor': item['valor_venda'] ?? '0',
-      'tipo': 'Entrada',
-      'pagamento': 'Pix',
-      'empresaId': widget.empresaId,
-      'data': DateTime.now(),
-    });
+    try {
+      await FirebaseFirestore.instance.runTransaction((transacao) async {
+        final documento = await transacao.get(celular);
+        final item = documento.data();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Celular vendido e lançado no financeiro'),
-      ),
-    );
+        if (item == null) {
+          throw StateError('Aparelho não encontrado.');
+        }
+
+        if (item['empresaId'] != widget.empresaId) {
+          throw StateError('Você não tem acesso a este aparelho.');
+        }
+
+        if (item['status'] == 'Vendido') {
+          throw StateError('Este aparelho já foi vendido.');
+        }
+
+        transacao.update(celular, {
+          'status': 'Vendido',
+          'vendido_em': agora,
+          'financeiroVendaId': lancamentoVenda.id,
+        });
+
+        transacao.set(lancamentoVenda, {
+          'empresaId': widget.empresaId,
+          'descricao':
+              'Venda celular usado - ${item['marca'] ?? ''} ${item['modelo'] ?? ''}',
+          'valor': item['valor_venda'] ?? '0',
+          'tipo': 'Entrada',
+          'pagamento': 'Pix',
+          'data': agora,
+          'origem': 'celular_usado',
+          'celularUsadoId': id,
+        });
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Celular vendido e lançado no financeiro')),
+      );
+    } on StateError catch (erro) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(erro.message.toString())),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Não foi possível registrar a venda.')),
+      );
+    }
   }
 
-  Future<void> reverterVenda(
-    String id,
-    Map<String, dynamic> item,
-  ) async {
-    await celulares.doc(id).update({
-      'status': 'Disponível',
-      'vendido_em': FieldValue.delete(),
-    });
+  Future<void> reverterVenda(String id) async {
+    final celular = celulares.doc(id);
+    final lancamentoEstorno = financeiro.doc();
+    final agora = Timestamp.now();
 
-    await financeiro.add({
-      'descricao':
-          'Estorno venda celular usado - ${item['marca'] ?? ''} ${item['modelo'] ?? ''}',
-      'valor': item['valor_venda'] ?? '0',
-      'tipo': 'Saída',
-      'pagamento': 'Estorno',
-      'empresaId': widget.empresaId,
-      'data': DateTime.now(),
-    });
+    try {
+      await FirebaseFirestore.instance.runTransaction((transacao) async {
+        final documento = await transacao.get(celular);
+        final item = documento.data();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Venda revertida e estorno lançado no financeiro'),
-      ),
-    );
+        if (item == null) {
+          throw StateError('Aparelho não encontrado.');
+        }
+
+        if (item['empresaId'] != widget.empresaId) {
+          throw StateError('Você não tem acesso a este aparelho.');
+        }
+
+        if (item['status'] != 'Vendido') {
+          throw StateError('Este aparelho não possui uma venda para reverter.');
+        }
+
+        transacao.update(celular, {
+          'status': 'Disponível',
+          'vendido_em': FieldValue.delete(),
+          'financeiroEstornoId': lancamentoEstorno.id,
+        });
+
+        transacao.set(lancamentoEstorno, {
+          'empresaId': widget.empresaId,
+          'descricao':
+              'Estorno venda celular usado - ${item['marca'] ?? ''} ${item['modelo'] ?? ''}',
+          'valor': item['valor_venda'] ?? '0',
+          'tipo': 'Saída',
+          'pagamento': 'Estorno',
+          'data': agora,
+          'origem': 'estorno_celular_usado',
+          'celularUsadoId': id,
+          'referenciaLancamentoId': item['financeiroVendaId'],
+        });
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Venda revertida e estorno lançado no financeiro')),
+      );
+    } on StateError catch (erro) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(erro.message.toString())),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Não foi possível reverter a venda.')),
+      );
+    }
   }
 
   Future<void> enviarWhatsApp(Map<String, dynamic> item) async {
@@ -623,13 +688,13 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
                     if (status != 'Vendido')
                       IconButton(
                         icon: Icon(Icons.check_circle, color: Colors.greenAccent),
-                        onPressed: () => marcarComoVendido(id, item),
+                        onPressed: () => marcarComoVendido(id),
                       ),
 
                     if (status == 'Vendido')
                       IconButton(
                         icon: Icon(Icons.undo, color: Colors.redAccent),
-                        onPressed: () => reverterVenda(id, item),
+                        onPressed: () => reverterVenda(id),
                       ),
                   ],
                 ),
