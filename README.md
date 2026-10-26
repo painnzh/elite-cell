@@ -30,7 +30,7 @@ Aplicativo de gestão para assistências técnicas e lojas de celulares. O proje
 - **Técnicos:** gerenciamento de técnicos associados à empresa.
 - **Garantias:** acompanhamento de garantias vinculadas aos dados da empresa.
 - **Financeiro:** lançamentos de entrada e saída, pesquisa, indicadores, gráfico e resumo de saldo por empresa.
-- **Celulares usados:** cadastro, busca, indicadores de revenda, status de disponibilidade, reserva, venda, reversão e compartilhamento por WhatsApp.
+- **Celulares usados:** cadastro, busca, indicadores de revenda, status de disponibilidade, reserva, venda, reversão, dossiê técnico por IMEI, composição de custos, margem prevista, termo de compra com assinatura na tela e compartilhamento por WhatsApp.
 - **Catálogo do cliente:** visualização de aparelhos disponíveis e botão de interesse via WhatsApp.
 - **Relatórios e impressão:** dependências para geração de PDF e impressão estão disponíveis no aplicativo.
 
@@ -213,28 +213,37 @@ Clientes, estoque, ordens de serviço, técnicos, garantias e financeiro já rec
 
 ### Estado atual
 
-O módulo cadastra aparelhos na coleção `celulares_usados` com marca, modelo, IMEI, conservação, cor, capacidade, bateria, valores de compra e venda, observações, status, foto e data.
+O módulo cadastra aparelhos na coleção `celulares_usados` com marca, modelo, IMEI, conservação, cor, capacidade, bateria, valores de compra e venda, observações, status, foto e data. Os documentos são isolados por `empresaId`, e as ações de edição, exclusão, venda e reversão verificam a empresa responsável.
 
-Os status atuais são `Disponível`, `Reservado` e `Vendido`. Ao marcar uma venda, a tela atualiza o status do aparelho e cria uma entrada no financeiro. Ao reverter, torna o aparelho disponível e cria uma saída de estorno.
+Os status operacionais incluem `Em avaliação`, `Em reparo`, `Pronto para venda`, `Disponível`, `Reservado` e `Vendido`. Ao marcar uma venda, a tela atualiza o status do aparelho e cria uma entrada no financeiro na mesma transação. Ao reverter, torna o aparelho disponível e cria uma saída de estorno.
+
+### Dossiê de aquisição e recondicionamento
+
+Cada aparelho possui um dossiê acessível pelo ícone de pasta na listagem. O recurso mantém um histórico interno vinculado ao IMEI, sem expor informações sensíveis no catálogo.
+
+- Registro de diagnóstico, peças, mão de obra e ajustes na subcoleção `processo`.
+- Cálculo em tempo real de custo de compra, custos do processo, custo total, lucro previsto e margem sobre o preço de venda.
+- Status técnico independente para acompanhar a etapa de recondicionamento.
+- Termo de compra e cessão com nome do vendedor, dados de contato opcionais, declaração de legitimidade e assinatura desenhada na tela.
+- Registro de data/hora, usuário autenticado e método de assinatura para compor a trilha de auditoria inicial.
+
+> A assinatura registrada no MVP é uma evidência operacional. Antes de usá-la como requisito jurídico, defina com assessoria jurídica a redação do termo, a retenção de dados, a necessidade de testemunhas e uma eventual integração com assinatura eletrônica avançada.
 
 ### Limitações atuais
 
-- Não há edição ou exclusão de aparelhos.
 - Fotos são salvas como caminhos locais; não ficam disponíveis para outros aparelhos ou para um catálogo público.
-- Não existe vínculo persistente entre um aparelho vendido e o lançamento financeiro correspondente.
-- Venda e lançamento financeiro são operações independentes, o que pode gerar dados inconsistentes em caso de falha ou repetição.
-- Não há isolamento por empresa nesse módulo.
 - O catálogo não possui uma flag explícita de publicação e usa um número de WhatsApp fixo.
+- O termo ainda não gera PDF imutável, hash de conteúdo ou integração com provedor de assinatura eletrônica.
+- Peças e mão de obra do dossiê ainda não movimentam o estoque ou o financeiro automaticamente.
 
 ### Direção de evolução recomendada
 
-1. Propagar `empresaId` do dashboard para as telas de usados e catálogo, em coordenação com o responsável pelo dashboard.
-2. Gravar e consultar `empresaId` em todos os documentos de usados; tratar documentos legados sem assumir que pertencem à empresa atual.
-3. Criar venda, atualização de status e lançamento financeiro de modo transacional, com um identificador de origem como `celularUsadoId`.
-4. Permitir edição e exclusão apenas após definir a autorização nas regras do Firestore.
-5. Migrar imagens para um armazenamento compartilhado, como Firebase Storage, guardando URLs em vez de caminhos locais.
-6. Definir se o catálogo é interno ou público. Se público, criar uma representação com campos permitidos e status de publicação, sem custo de compra ou dados internos.
-7. Tornar o contato do catálogo configurável por empresa.
+1. Versionar e implantar regras do Firestore que protejam o dossiê, o termo e as subcoleções por `empresaId`.
+2. Migrar imagens para um armazenamento compartilhado, como Firebase Storage, guardando URLs em vez de caminhos locais.
+3. Ligar peças e mão de obra a movimentações de estoque e financeiro após validar o fluxo contábil.
+4. Gerar PDF do termo, preservar versões e integrar assinatura eletrônica quando a política jurídica for definida.
+5. Definir se o catálogo é interno ou público. Se público, criar uma representação com campos permitidos, sem custo de compra, margem, IMEI completo ou dados do termo.
+6. Tornar o contato do catálogo configurável por empresa.
 
 ## Melhorias planejadas
 
@@ -242,8 +251,12 @@ Os status atuais são `Disponível`, `Reservado` e `Vendido`. Ao marcar uma vend
 
 - [ ] Concluir o isolamento por `empresaId` em todos os módulos remanescentes.
 - [ ] Versionar, revisar e implantar regras seguras do Firestore.
-- [ ] Integrar vendas de usados ao financeiro de forma atômica e idempotente.
-- [ ] Adicionar edição, exclusão e validação de aparelhos usados.
+- [x] Integrar vendas de usados ao financeiro de forma atômica e idempotente.
+- [x] Adicionar edição, exclusão e validação de aparelhos usados.
+- [x] Criar dossiê de aquisição e recondicionamento com custos e margem.
+- [x] Registrar termo de compra com declaração e assinatura na tela.
+- [ ] Integrar peças e mão de obra do dossiê ao estoque e ao financeiro.
+- [ ] Gerar PDF versionado do termo e avaliar assinatura eletrônica avançada.
 - [ ] Substituir caminhos locais de imagens por armazenamento compartilhado.
 - [ ] Definir uma estratégia segura para o catálogo público.
 

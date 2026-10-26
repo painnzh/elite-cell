@@ -5,13 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'dossie_aparelho_screen.dart';
+
 class CelularesUsadosScreen extends StatefulWidget {
   final String empresaId;
 
-  const CelularesUsadosScreen({
-    super.key,
-    required this.empresaId,
-  });
+  const CelularesUsadosScreen({super.key, required this.empresaId});
 
   @override
   State<CelularesUsadosScreen> createState() => _CelularesUsadosScreenState();
@@ -37,11 +36,9 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
 
   File? fotoCelular;
 
-  final celulares =
-      FirebaseFirestore.instance.collection('celulares_usados');
+  final celulares = FirebaseFirestore.instance.collection('celulares_usados');
 
-  final financeiro =
-      FirebaseFirestore.instance.collection('financeiro');
+  final financeiro = FirebaseFirestore.instance.collection('financeiro');
 
   void preencherFormulario(Map<String, dynamic>? item) {
     marcaController.text = item?['marca']?.toString() ?? '';
@@ -99,10 +96,7 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
   Future<void> escolherFoto(ImageSource origem) async {
     final picker = ImagePicker();
 
-    final imagem = await picker.pickImage(
-      source: origem,
-      imageQuality: 75,
-    );
+    final imagem = await picker.pickImage(source: origem, imageQuality: 75);
 
     if (imagem != null) {
       setState(() {
@@ -111,10 +105,7 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
     }
   }
 
-  Future<void> salvarCelular({
-    String? id,
-    String? fotoPathOriginal,
-  }) async {
+  Future<void> salvarCelular({String? id, String? fotoPathOriginal}) async {
     final dados = {
       'marca': marcaController.text,
       'modelo': modeloController.text,
@@ -150,13 +141,17 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
       preencherFormulario(null);
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(id == null ? 'Aparelho cadastrado.' : 'Aparelho atualizado.')),
+        SnackBar(
+          content: Text(
+            id == null ? 'Aparelho cadastrado.' : 'Aparelho atualizado.',
+          ),
+        ),
       );
     } on StateError catch (erro) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(erro.message.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(erro.message.toString())));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -212,9 +207,9 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
       );
     } on StateError catch (erro) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(erro.message.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(erro.message.toString())));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -267,13 +262,15 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Venda revertida e estorno lançado no financeiro')),
+        SnackBar(
+          content: Text('Venda revertida e estorno lançado no financeiro'),
+        ),
       );
     } on StateError catch (erro) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(erro.message.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(erro.message.toString())));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -295,10 +292,7 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
 
     final url = Uri.parse('https://wa.me/?text=$texto');
 
-    await launchUrl(
-      url,
-      mode: LaunchMode.externalApplication,
-    );
+    await launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
   InputDecoration decoracaoCampo(String label) {
@@ -327,12 +321,7 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
     );
   }
 
-  Widget dashboardCard(
-    String titulo,
-    String valor,
-    Color cor,
-    IconData icon,
-  ) {
+  Widget dashboardCard(String titulo, String valor, Color cor, IconData icon) {
     return Container(
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -355,10 +344,7 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
           Text(
             titulo,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: Colors.white70, fontSize: 12),
           ),
           SizedBox(height: 4),
           Text(
@@ -570,16 +556,20 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
                       dropdownColor: Color(0xFF111111),
                       style: TextStyle(color: Colors.white),
                       decoration: decoracaoCampo('Status'),
-                      items: [
-                        'Disponível',
-                        'Reservado',
-                        'Vendido',
-                      ].map((item) {
-                        return DropdownMenuItem(
-                          value: item,
-                          child: Text(item),
-                        );
-                      }).toList(),
+                      items:
+                          [
+                            'Em avaliação',
+                            'Em reparo',
+                            'Pronto para venda',
+                            'Disponível',
+                            'Reservado',
+                            'Vendido',
+                          ].map((item) {
+                            return DropdownMenuItem(
+                              value: item,
+                              child: Text(item),
+                            );
+                          }).toList(),
                       onChanged: (valor) {
                         setState(() {
                           statusSelecionado = valor!;
@@ -619,10 +609,7 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
                 ElevatedButton(
                   onPressed: () {
                     if (!validarFormulario()) return;
-                    salvarCelular(
-                      id: id,
-                      fotoPathOriginal: fotoPathOriginal,
-                    );
+                    salvarCelular(id: id, fotoPathOriginal: fotoPathOriginal);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: dourado,
@@ -656,14 +643,14 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
       });
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Aparelho excluído.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Aparelho excluído.')));
     } on StateError catch (erro) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(erro.message.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(erro.message.toString())));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -710,9 +697,7 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
   Widget imagemCelular(String fotoPath, Color cor) {
     if (fotoPath.isNotEmpty && File(fotoPath).existsSync()) {
       return ClipRRect(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(18),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
         child: Image.file(
           File(fotoPath),
           height: 180,
@@ -727,22 +712,13 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.black,
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(18),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
-      child: Icon(
-        Icons.phone_iphone,
-        color: cor,
-        size: 60,
-      ),
+      child: Icon(Icons.phone_iphone, color: cor, size: 60),
     );
   }
 
-  Widget cardCelular(
-    String id,
-    Map<String, dynamic> item,
-  ) {
+  Widget cardCelular(String id, Map<String, dynamic> item) {
     final compra = converterValor(item['valor_compra']);
     final venda = converterValor(item['valor_venda']);
     final lucro = venda - compra;
@@ -798,10 +774,7 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
 
                 Text(
                   'Venda: R\$ ${item['valor_venda'] ?? ''}',
-                  style: TextStyle(
-                    color: dourado,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(color: dourado, fontWeight: FontWeight.bold),
                 ),
 
                 Text(
@@ -848,6 +821,20 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
                       onPressed: () => abrirFormulario(id: id, item: item),
                     ),
 
+                    IconButton(
+                      tooltip: 'Abrir dossiê do aparelho',
+                      icon: Icon(Icons.folder_shared, color: dourado),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => DossieAparelhoScreen(
+                            empresaId: widget.empresaId,
+                            aparelhoId: id,
+                          ),
+                        ),
+                      ),
+                    ),
+
                     if (status != 'Vendido')
                       IconButton(
                         icon: Icon(Icons.delete, color: Colors.redAccent),
@@ -856,7 +843,10 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
 
                     if (status != 'Vendido')
                       IconButton(
-                        icon: Icon(Icons.check_circle, color: Colors.greenAccent),
+                        icon: Icon(
+                          Icons.check_circle,
+                          color: Colors.greenAccent,
+                        ),
                         onPressed: () => marcarComoVendido(id),
                       ),
 
@@ -884,10 +874,7 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
         backgroundColor: Colors.black,
         iconTheme: IconThemeData(color: dourado),
         centerTitle: true,
-        title: Text(
-          'Celulares Usados',
-          style: TextStyle(color: dourado),
-        ),
+        title: Text('Celulares Usados', style: TextStyle(color: dourado)),
       ),
 
       floatingActionButton: FloatingActionButton(
@@ -946,26 +933,22 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
                           .toString()
                           .toLowerCase()
                           .contains(busca) ||
-                      (item['modelo'] ?? '')
-                          .toString()
-                          .toLowerCase()
-                          .contains(busca) ||
-                      (item['imei'] ?? '')
-                          .toString()
-                          .toLowerCase()
-                          .contains(busca) ||
-                      (item['status'] ?? '')
-                          .toString()
-                          .toLowerCase()
-                          .contains(busca) ||
+                      (item['modelo'] ?? '').toString().toLowerCase().contains(
+                        busca,
+                      ) ||
+                      (item['imei'] ?? '').toString().toLowerCase().contains(
+                        busca,
+                      ) ||
+                      (item['status'] ?? '').toString().toLowerCase().contains(
+                        busca,
+                      ) ||
                       (item['capacidade'] ?? '')
                           .toString()
                           .toLowerCase()
                           .contains(busca) ||
-                      (item['cor'] ?? '')
-                          .toString()
-                          .toLowerCase()
-                          .contains(busca);
+                      (item['cor'] ?? '').toString().toLowerCase().contains(
+                        busca,
+                      );
                 }).toList();
 
                 return ListView(
