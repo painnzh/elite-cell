@@ -42,6 +42,54 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
   final financeiro =
       FirebaseFirestore.instance.collection('financeiro');
 
+  void preencherFormulario(Map<String, dynamic>? item) {
+    marcaController.text = item?['marca']?.toString() ?? '';
+    modeloController.text = item?['modelo']?.toString() ?? '';
+    imeiController.text = item?['imei']?.toString() ?? '';
+    estadoController.text = item?['estado']?.toString() ?? '';
+    corController.text = item?['cor']?.toString() ?? '';
+    capacidadeController.text = item?['capacidade']?.toString() ?? '';
+    bateriaController.text = item?['bateria']?.toString() ?? '';
+    compraController.text = item?['valor_compra']?.toString() ?? '';
+    vendaController.text = item?['valor_venda']?.toString() ?? '';
+    observacaoController.text = item?['observacao']?.toString() ?? '';
+    statusSelecionado = item?['status']?.toString() ?? 'Disponível';
+    fotoCelular = null;
+  }
+
+  bool validarFormulario() {
+    final camposObrigatorios = [
+      marcaController.text,
+      modeloController.text,
+      imeiController.text,
+      estadoController.text,
+      capacidadeController.text,
+    ];
+    final compra = double.tryParse(compraController.text.replaceAll(',', '.'));
+    final venda = double.tryParse(vendaController.text.replaceAll(',', '.'));
+    final bateria = int.tryParse(bateriaController.text);
+
+    if (camposObrigatorios.any((campo) => campo.trim().isEmpty) ||
+        compra == null ||
+        venda == null ||
+        compra < 0 ||
+        venda < 0 ||
+        bateria == null ||
+        bateria < 0 ||
+        bateria > 100) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Preencha os campos obrigatórios e informe valores válidos.',
+          ),
+        ),
+      );
+      return false;
+    }
+
+    return true;
+  }
+
   double converterValor(dynamic valor) {
     return double.tryParse(valor.toString().replaceAll(',', '.')) ?? 0;
   }
@@ -61,8 +109,11 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
     }
   }
 
-  Future<void> salvarCelular() async {
-    await celulares.add({
+  Future<void> salvarCelular({
+    String? id,
+    String? fotoPathOriginal,
+  }) async {
+    final dados = {
       'marca': marcaController.text,
       'modelo': modeloController.text,
       'imei': imeiController.text,
@@ -74,28 +125,41 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
       'valor_venda': vendaController.text,
       'observacao': observacaoController.text,
       'status': statusSelecionado,
-      'foto_path': fotoCelular?.path ?? '',
+      'foto_path': fotoCelular?.path ?? fotoPathOriginal ?? '',
       'empresaId': widget.empresaId,
-      'data': DateTime.now(),
-    });
+    };
 
-    marcaController.clear();
-    modeloController.clear();
-    imeiController.clear();
-    estadoController.clear();
-    corController.clear();
-    capacidadeController.clear();
-    bateriaController.clear();
-    compraController.clear();
-    vendaController.clear();
-    observacaoController.clear();
+    try {
+      if (id == null) {
+        await celulares.add({...dados, 'data': DateTime.now()});
+      } else {
+        await FirebaseFirestore.instance.runTransaction((transacao) async {
+          final documento = await transacao.get(celulares.doc(id));
+          if (!documento.exists ||
+              documento.data()?['empresaId'] != widget.empresaId) {
+            throw StateError('Você não tem acesso a este aparelho.');
+          }
+          transacao.update(celulares.doc(id), dados);
+        });
+      }
 
-    setState(() {
-      fotoCelular = null;
-      statusSelecionado = 'Disponível';
-    });
-
-    Navigator.pop(context);
+      if (!mounted) return;
+      preencherFormulario(null);
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(id == null ? 'Aparelho cadastrado.' : 'Aparelho atualizado.')),
+      );
+    } on StateError catch (erro) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(erro.message.toString())),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Não foi possível salvar o aparelho.')),
+      );
+    }
   }
 
   Future<void> marcarComoVendido(String id) async {
@@ -401,7 +465,10 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
     );
   }
 
-  void abrirFormulario() {
+  void abrirFormulario({String? id, Map<String, dynamic>? item}) {
+    preencherFormulario(item);
+    final fotoPathOriginal = item?['foto_path']?.toString();
+
     showDialog(
       context: context,
       builder: (_) {
@@ -410,7 +477,7 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
             return AlertDialog(
               backgroundColor: Color(0xFF111111),
               title: Text(
-                'Cadastrar Celular',
+                id == null ? 'Cadastrar Celular' : 'Editar Celular',
                 style: TextStyle(color: dourado),
               ),
               content: SingleChildScrollView(
@@ -528,7 +595,13 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
                   ),
                 ),
                 ElevatedButton(
-                  onPressed: salvarCelular,
+                  onPressed: () {
+                    if (!validarFormulario()) return;
+                    salvarCelular(
+                      id: id,
+                      fotoPathOriginal: fotoPathOriginal,
+                    );
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: dourado,
                     foregroundColor: Colors.black,
@@ -541,6 +614,69 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
         );
       },
     );
+  }
+
+  Future<void> excluirCelular(String id) async {
+    try {
+      await FirebaseFirestore.instance.runTransaction((transacao) async {
+        final documento = await transacao.get(celulares.doc(id));
+        final item = documento.data();
+
+        if (item == null || item['empresaId'] != widget.empresaId) {
+          throw StateError('Você não tem acesso a este aparelho.');
+        }
+
+        if (item['status'] == 'Vendido') {
+          throw StateError('Reverta a venda antes de excluir o aparelho.');
+        }
+
+        transacao.delete(celulares.doc(id));
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Aparelho excluído.')),
+      );
+    } on StateError catch (erro) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(erro.message.toString())),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Não foi possível excluir o aparelho.')),
+      );
+    }
+  }
+
+  Future<void> confirmarExclusao(String id) async {
+    final confirmou = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Color(0xFF111111),
+        title: Text('Excluir aparelho', style: TextStyle(color: dourado)),
+        content: Text(
+          'Esta ação não poderá ser desfeita.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: Text('Excluir'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmou == true) {
+      await excluirCelular(id);
+    }
   }
 
   Color corStatus(String status) {
@@ -684,6 +820,17 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
                       icon: Icon(Icons.share, color: dourado),
                       onPressed: () => enviarWhatsApp(item),
                     ),
+
+                    IconButton(
+                      icon: Icon(Icons.edit, color: Colors.blueAccent),
+                      onPressed: () => abrirFormulario(id: id, item: item),
+                    ),
+
+                    if (status != 'Vendido')
+                      IconButton(
+                        icon: Icon(Icons.delete, color: Colors.redAccent),
+                        onPressed: () => confirmarExclusao(id),
+                      ),
 
                     if (status != 'Vendido')
                       IconButton(
