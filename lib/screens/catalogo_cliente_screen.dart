@@ -5,7 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class CatalogoClienteScreen extends StatelessWidget {
-  CatalogoClienteScreen({super.key});
+  final String empresaId;
+
+CatalogoClienteScreen({
+  super.key,
+  required this.empresaId,
+});
 
   final Color dourado = const Color(0xFFD4AF37);
 
@@ -71,7 +76,9 @@ class CatalogoClienteScreen extends StatelessWidget {
       ),
 
       body: StreamBuilder<QuerySnapshot>(
-        stream: celulares.snapshots(),
+        stream: celulares
+    .where('empresaId', isEqualTo: empresaId)
+    .snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return Center(
@@ -81,10 +88,14 @@ class CatalogoClienteScreen extends StatelessWidget {
             );
           }
 
-          final aparelhos = snapshot.data!.docs.where((doc) {
-            final item = doc.data() as Map<String, dynamic>;
-            return item['status'] == 'Disponível';
-          }).toList();
+          
+final aparelhos = snapshot.data!.docs.where((doc) {
+  final item = doc.data() as Map<String, dynamic>;
+
+  return item['empresaId'] == empresaId &&
+      item['status'] == 'Disponível';
+}).toList();
+
 
           if (aparelhos.isEmpty) {
             return Center(

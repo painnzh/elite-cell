@@ -19,12 +19,23 @@ class DashboardScreen extends StatelessWidget {
 
   final Color dourado = Color(0xFFD4AF37);
 
-  final clientes = FirebaseFirestore.instance.collection('clientes');
-  final os = FirebaseFirestore.instance.collection('ordens_servico');
-  final estoque = FirebaseFirestore.instance.collection('estoque');
-  final financeiro = FirebaseFirestore.instance.collection('financeiro');
-  final garantias = FirebaseFirestore.instance.collection('garantias');
-  final tecnicos = FirebaseFirestore.instance.collection('tecnicos');
+  CollectionReference<Map<String, dynamic>> get clientes =>
+      FirebaseFirestore.instance.collection('clientes');
+
+  CollectionReference<Map<String, dynamic>> get os =>
+      FirebaseFirestore.instance.collection('ordens_servico');
+
+  CollectionReference<Map<String, dynamic>> get estoque =>
+      FirebaseFirestore.instance.collection('estoque');
+
+  CollectionReference<Map<String, dynamic>> get financeiro =>
+      FirebaseFirestore.instance.collection('financeiro');
+
+  CollectionReference<Map<String, dynamic>> get garantias =>
+      FirebaseFirestore.instance.collection('garantias');
+
+  CollectionReference<Map<String, dynamic>> get tecnicos =>
+      FirebaseFirestore.instance.collection('tecnicos');
 
   double converterValor(dynamic valor) {
     return double.tryParse(valor.toString().replaceAll(',', '.')) ?? 0;
@@ -504,22 +515,22 @@ class DashboardScreen extends StatelessWidget {
       ),
 
       body: StreamBuilder<QuerySnapshot>(
-        stream: os.snapshots(),
+        stream: os.where('empresaId', isEqualTo: empresaId).snapshots(),
         builder: (context, osSnapshot) {
           return StreamBuilder<QuerySnapshot>(
-            stream: clientes.snapshots(),
+            stream: clientes.where('empresaId', isEqualTo: empresaId).snapshots(),
             builder: (context, clientesSnapshot) {
               return StreamBuilder<QuerySnapshot>(
-                stream: estoque.snapshots(),
+                stream: estoque.where('empresaId', isEqualTo: empresaId).snapshots(),
                 builder: (context, estoqueSnapshot) {
                   return StreamBuilder<QuerySnapshot>(
-                    stream: financeiro.snapshots(),
+                    stream: financeiro.where('empresaId', isEqualTo: empresaId).snapshots(),
                     builder: (context, financeiroSnapshot) {
                       return StreamBuilder<QuerySnapshot>(
-                        stream: garantias.snapshots(),
+                        stream: garantias.where('empresaId', isEqualTo: empresaId).snapshots(),
                         builder: (context, garantiasSnapshot) {
                           return StreamBuilder<QuerySnapshot>(
-                            stream: tecnicos.snapshots(),
+                            stream: tecnicos.where('empresaId', isEqualTo: empresaId).snapshots(),
                             builder: (context, tecnicosSnapshot) {
                               if (!osSnapshot.hasData ||
                                   !clientesSnapshot.hasData ||
@@ -801,7 +812,7 @@ class DashboardScreen extends StatelessWidget {
                                           context,
                                           Icons.storefront,
                                           'Catálogo Cliente',
-                                          CatalogoClienteScreen(),
+                                          CatalogoClienteScreen(empresaId: empresaId),
                                         ),
 					menuCard(
  					  context,
@@ -819,7 +830,7 @@ class DashboardScreen extends StatelessWidget {
                                           context,
                                           Icons.phone_android,
                                           'Celulares Usados',
-                                          CelularesUsadosScreen(),
+                                          CelularesUsadosScreen(empresaId: empresaId),
                                         ),
                                         menuCard(
                                           context,
@@ -837,7 +848,7 @@ class DashboardScreen extends StatelessWidget {
                                           context,
                                           Icons.search,
                                           'Consulta Cliente',
-                                          ConsultaClienteScreen(),
+                                          ConsultaClienteScreen(empresaId: empresaId),
                                         ),
                                       ],
                                     ),

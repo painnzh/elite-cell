@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 
 class EstoqueDetalhesScreen extends StatefulWidget {
   final Map dados;
+  final String empresaId;
 
   const EstoqueDetalhesScreen({
     super.key,
     required this.dados,
+    required this.empresaId,
   });
 
   @override
@@ -55,39 +57,97 @@ class _EstoqueDetalhesScreenState extends State<EstoqueDetalhesScreen> {
   Future<void> salvarAlteracoes() async {
     final id = widget.dados['id'];
 
-    await FirebaseFirestore.instance.collection('estoque').doc(id).update({
-      'nome': nomeController.text,
-      'modelo': modeloController.text,
-      'quantidade': quantidadeController.text,
-      'custo': custoController.text,
-      'venda': vendaController.text,
-      'fornecedor': fornecedorController.text,
-      'atualizado_em': DateTime.now(),
-    });
+    if (id == null || id.toString().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ID da peça inválido.')),
+      );
+      return;
+    }
 
-    setState(() {
-      editando = false;
-    });
+    try {
+      final referencia = FirebaseFirestore.instance
+          .collection('estoque')
+          .doc(id.toString());
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Peça atualizada com sucesso'),
-      ),
-    );
+      final documento = await referencia.get();
+
+      if (!documento.exists ||
+          documento.data()?['empresaId'] != widget.empresaId) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Peça não encontrada ou sem autorização.'),
+          ),
+        );
+        return;
+      }
+
+      await referencia.update({
+        'nome': nomeController.text,
+        'modelo': modeloController.text,
+        'quantidade': quantidadeController.text,
+        'custo': custoController.text,
+        'venda': vendaController.text,
+        'fornecedor': fornecedorController.text,
+        'atualizado_em': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+
+      setState(() {
+        editando = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Peça atualizada com sucesso!')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao atualizar peça: $e')),
+      );
+    }
   }
 
-  Future<void> excluirPeca() async {
+    Future<void> excluirPeca() async {
     final id = widget.dados['id'];
 
-    await FirebaseFirestore.instance.collection('estoque').doc(id).delete();
+    if (id == null || id.toString().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ID da peça inválido.')),
+      );
+      return;
+    }
 
-    Navigator.pop(context);
+    try {
+      final referencia = FirebaseFirestore.instance
+          .collection('estoque')
+          .doc(id.toString());
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Peça excluída com sucesso'),
-      ),
-    );
+      final documento = await referencia.get();
+
+      if (!documento.exists ||
+          documento.data()?['empresaId'] != widget.empresaId) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Peça não encontrada ou sem autorização.'),
+          ),
+        );
+        return;
+      }
+
+      await referencia.delete();
+
+      if (!mounted) return;
+
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao excluir peça: $e')),
+      );
+    }
   }
 
   InputDecoration decoracaoCampo(String label) {

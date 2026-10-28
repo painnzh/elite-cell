@@ -265,9 +265,10 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => EstoqueDetalhesScreen(
-                              dados: peca,
-                            ),
+			    builder: (_) => EstoqueDetalhesScreen(
+  			      dados: peca,
+  			      empresaId: widget.empresaId,
+			    ),
                           ),
                         );
                       },

@@ -6,8 +6,16 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class CelularesUsadosScreen extends StatefulWidget {
+  final String empresaId;
+
+  const CelularesUsadosScreen({
+    super.key,
+    required this.empresaId,
+  });
+
   @override
-  State<CelularesUsadosScreen> createState() => _CelularesUsadosScreenState();
+  State<CelularesUsadosScreen> createState() =>
+      _CelularesUsadosScreenState();
 }
 
 class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
@@ -54,22 +62,23 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
     }
   }
 
-  Future<void> salvarCelular() async {
-    await celulares.add({
-      'marca': marcaController.text,
-      'modelo': modeloController.text,
-      'imei': imeiController.text,
-      'estado': estadoController.text,
-      'cor': corController.text,
-      'capacidade': capacidadeController.text,
-      'bateria': bateriaController.text,
-      'valor_compra': compraController.text,
-      'valor_venda': vendaController.text,
-      'observacao': observacaoController.text,
-      'status': statusSelecionado,
-      'foto_path': fotoCelular?.path ?? '',
-      'data': DateTime.now(),
-    });
+Future<void> salvarCelular() async {
+  await celulares.add({
+    'empresaId': widget.empresaId,
+    'marca': marcaController.text,
+    'modelo': modeloController.text,
+    'imei': imeiController.text,
+    'estado': estadoController.text,
+    'cor': corController.text,
+    'capacidade': capacidadeController.text,
+    'bateria': bateriaController.text,
+    'valor_compra': compraController.text,
+    'valor_venda': vendaController.text,
+    'observacao': observacaoController.text,
+    'status': statusSelecionado,
+    'foto_path': fotoCelular?.path ?? '',
+    'data': DateTime.now(),
+  });
 
     marcaController.clear();
     modeloController.clear();
@@ -91,15 +100,35 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
   }
 
   Future<void> marcarComoVendido(
-    String id,
-    Map<String, dynamic> item,
-  ) async {
-    await celulares.doc(id).update({
+  String id,
+  Map<String, dynamic> item,
+) async {
+  try {
+    final celularRef = celulares.doc(id);
+    final celularDoc = await celularRef.get();
+
+    if (!celularDoc.exists) {
+      throw Exception('Celular não encontrado.');
+    }
+
+    final dadosCelular = celularDoc.data();
+
+    if (dadosCelular == null ||
+        dadosCelular['empresaId'] != widget.empresaId) {
+      throw Exception('Este celular não pertence à sua empresa.');
+    }
+
+    if (dadosCelular['status'] != 'Disponível') {
+      throw Exception('Este celular não está disponível para venda.');
+    }
+
+    await celularRef.update({
       'status': 'Vendido',
       'vendido_em': DateTime.now(),
     });
 
     await financeiro.add({
+      'empresaId': widget.empresaId,
       'descricao':
           'Venda celular usado - ${item['marca'] ?? ''} ${item['modelo'] ?? ''}',
       'valor': item['valor_venda'] ?? '0',
@@ -108,23 +137,53 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
       'data': DateTime.now(),
     });
 
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Celular vendido e lançado no financeiro'),
+      const SnackBar(
+        content: Text('Celular vendido e lançamento financeiro registrado!'),
       ),
     );
-  }
+  } catch (e) {
+    if (!mounted) return;
 
-  Future<void> reverterVenda(
-    String id,
-    Map<String, dynamic> item,
-  ) async {
-    await celulares.doc(id).update({
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Erro ao registrar venda: $e')),
+    );
+  }
+}
+
+  
+Future<void> reverterVenda(
+  String id,
+  Map<String, dynamic> item,
+) async {
+  try {
+    final celularRef = celulares.doc(id);
+    final celularDoc = await celularRef.get();
+
+    if (!celularDoc.exists) {
+      throw Exception('Celular não encontrado.');
+    }
+
+    final dadosCelular = celularDoc.data();
+
+    if (dadosCelular == null ||
+        dadosCelular['empresaId'] != widget.empresaId) {
+      throw Exception('Este celular não pertence à sua empresa.');
+    }
+
+    if (dadosCelular['status'] != 'Vendido') {
+      throw Exception('Este celular não está marcado como vendido.');
+    }
+
+    await celularRef.update({
       'status': 'Disponível',
       'vendido_em': FieldValue.delete(),
     });
 
     await financeiro.add({
+      'empresaId': widget.empresaId,
       'descricao':
           'Estorno venda celular usado - ${item['marca'] ?? ''} ${item['modelo'] ?? ''}',
       'valor': item['valor_venda'] ?? '0',
@@ -133,12 +192,24 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
       'data': DateTime.now(),
     });
 
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Venda revertida e estorno lançado no financeiro'),
+      const SnackBar(
+        content: Text(
+          'Venda revertida e estorno lançado no financeiro',
+        ),
       ),
     );
+  } catch (e) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Erro ao reverter venda: $e')),
+    );
   }
+}
+
 
   Future<void> enviarWhatsApp(Map<String, dynamic> item) async {
     final texto = Uri.encodeComponent(
@@ -682,7 +753,10 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
 
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: celulares.orderBy('data', descending: true).snapshots(),
+              stream: celulares
+                  .where('empresaId', isEqualTo: widget.empresaId)
+                  .orderBy('data', descending: true)
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return Center(

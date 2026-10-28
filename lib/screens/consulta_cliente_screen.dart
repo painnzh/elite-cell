@@ -3,8 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ConsultaClienteScreen extends StatefulWidget {
+  final String empresaId;
+
+  const ConsultaClienteScreen({
+    super.key,
+    required this.empresaId,
+  });
+
   @override
-  State<ConsultaClienteScreen> createState() => _ConsultaClienteScreenState();
+  State<ConsultaClienteScreen> createState() =>
+      _ConsultaClienteScreenState();
 }
 
 class _ConsultaClienteScreenState extends State<ConsultaClienteScreen> {
@@ -115,7 +123,9 @@ class _ConsultaClienteScreenState extends State<ConsultaClienteScreen> {
 
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: os.snapshots(),
+              stream: os
+    .where('empresaId', isEqualTo: widget.empresaId)
+    .snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return Center(

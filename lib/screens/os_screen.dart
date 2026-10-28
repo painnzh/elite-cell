@@ -583,8 +583,9 @@ if (usuario == null) {
                     tecnicoDropdown(setModalState),
 
                     StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
+		      stream: FirebaseFirestore.instance
                           .collection('estoque')
+                          .where('empresaId', isEqualTo: widget.empresaId)
                           .orderBy('nome')
                           .snapshots(),
                       builder: (context, snapshot) {

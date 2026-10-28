@@ -71,37 +71,45 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
     return valor == true ? '✅' : '❌';
   }
 
-  Future<void> baixarEstoqueAutomaticamente() async {
-    if (status != 'Entregue') return;
-    if (widget.dados['estoque_baixado'] == true) return;
+  
+Future<void> baixarEstoqueAutomaticamente() async {
+  if (status != 'Entregue') return;
+  if (widget.dados['estoque_baixado'] == true) return;
 
-    final String peca = (widget.dados['peca_usada'] ?? '').toString();
-    final int quantidadeUsada =
-        converterInteiro(widget.dados['quantidade_peca']);
+  final String peca = (widget.dados['peca_usada'] ?? '').toString();
+  final int quantidadeUsada =
+      converterInteiro(widget.dados['quantidade_peca']);
 
-    if (peca.isEmpty || quantidadeUsada <= 0) return;
+  final String empresaId =
+      (widget.dados['empresaId'] ?? '').toString();
 
-    final estoqueBusca = await FirebaseFirestore.instance
-        .collection('estoque')
-        .where('nome', isEqualTo: peca)
-        .limit(1)
-        .get();
-
-    if (estoqueBusca.docs.isEmpty) return;
-
-    final docEstoque = estoqueBusca.docs.first;
-    final dadosEstoque = docEstoque.data();
-
-    final int estoqueAtual = converterInteiro(dadosEstoque['quantidade']);
-    final int novoEstoque = estoqueAtual - quantidadeUsada;
-
-    await FirebaseFirestore.instance
-        .collection('estoque')
-        .doc(docEstoque.id)
-        .update({
-      'quantidade': novoEstoque < 0 ? '0' : novoEstoque.toString(),
-    });
+  if (peca.isEmpty || quantidadeUsada <= 0 || empresaId.isEmpty) {
+    return;
   }
+
+  final estoqueBusca = await FirebaseFirestore.instance
+      .collection('estoque')
+      .where('empresaId', isEqualTo: empresaId)
+      .where('nome', isEqualTo: peca)
+      .limit(1)
+      .get();
+
+  if (estoqueBusca.docs.isEmpty) return;
+
+  final docEstoque = estoqueBusca.docs.first;
+  final dadosEstoque = docEstoque.data();
+
+  final int estoqueAtual = converterInteiro(dadosEstoque['quantidade']);
+  final int novoEstoque = estoqueAtual - quantidadeUsada;
+
+  await FirebaseFirestore.instance
+      .collection('estoque')
+      .doc(docEstoque.id)
+      .update({
+    'quantidade': novoEstoque < 0 ? '0' : novoEstoque.toString(),
+  });
+}
+
 
   Future<void> salvarAlteracoes() async {
     final id = widget.dados['id'];
