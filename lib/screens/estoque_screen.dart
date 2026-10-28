@@ -83,10 +83,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
       builder: (_) {
         return AlertDialog(
           backgroundColor: Color(0xFF111111),
-          title: Text(
-            'Nova Peça',
-            style: TextStyle(color: dourado),
-          ),
+          title: Text('Nova Peça', style: TextStyle(color: dourado)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -103,10 +100,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Cancelar',
-                style: TextStyle(color: Colors.white70),
-              ),
+              child: Text('Cancelar', style: TextStyle(color: Colors.white70)),
             ),
             ElevatedButton(
               onPressed: salvarPeca,
@@ -135,10 +129,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
         backgroundColor: Colors.black,
         iconTheme: IconThemeData(color: dourado),
         centerTitle: true,
-        title: Image.asset(
-          'assets/images/elite_cell_logo.png',
-          height: 45,
-        ),
+        title: Image.asset('assets/images/elite_cell_logo.png', height: 45),
       ),
 
       floatingActionButton: FloatingActionButton(
@@ -151,12 +142,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
       body: Column(
         children: [
           Container(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 18,
-              bottom: 8,
-            ),
+            padding: EdgeInsets.only(left: 16, right: 16, top: 18, bottom: 8),
             child: Column(
               children: [
                 Text(
@@ -173,10 +159,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
 
                 Text(
                   'Controle de peças e fornecedores',
-                  style: TextStyle(
-                    color: Colors.white60,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.white60, fontSize: 14),
                 ),
               ],
             ),
@@ -211,7 +194,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
             child: StreamBuilder<QuerySnapshot>(
               stream: estoque
                   .where('empresaId', isEqualTo: widget.empresaId)
- 		  .snapshots(),
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return Center(
@@ -222,14 +205,12 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
                 final dados = snapshot.data!.docs.where((doc) {
                   final peca = doc.data() as Map<String, dynamic>;
 
-                  return (peca['nome'] ?? '')
-                          .toString()
-                          .toLowerCase()
-                          .contains(busca) ||
-                      (peca['modelo'] ?? '')
-                          .toString()
-                          .toLowerCase()
-                          .contains(busca) ||
+                  return (peca['nome'] ?? '').toString().toLowerCase().contains(
+                        busca,
+                      ) ||
+                      (peca['modelo'] ?? '').toString().toLowerCase().contains(
+                        busca,
+                      ) ||
                       (peca['fornecedor'] ?? '')
                           .toString()
                           .toLowerCase()
@@ -265,10 +246,10 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-			    builder: (_) => EstoqueDetalhesScreen(
-  			      dados: peca,
-  			      empresaId: widget.empresaId,
-			    ),
+                            builder: (_) => EstoqueDetalhesScreen(
+                              dados: peca,
+                              empresaId: widget.empresaId,
+                            ),
                           ),
                         );
                       },
@@ -295,19 +276,15 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
                             vertical: 8,
                           ),
                           leading: CircleAvatar(
-                            backgroundColor:
-                                estoqueBaixo ? Colors.redAccent : dourado,
-                            child: Icon(
-                              Icons.inventory,
-                              color: Colors.black,
-                            ),
+                            backgroundColor: estoqueBaixo
+                                ? Colors.redAccent
+                                : dourado,
+                            child: Icon(Icons.inventory, color: Colors.black),
                           ),
                           title: Text(
                             peca['nome'] ?? '',
                             style: TextStyle(
-                              color: estoqueBaixo
-                                  ? Colors.redAccent
-                                  : dourado,
+                              color: estoqueBaixo ? Colors.redAccent : dourado,
                               fontWeight: FontWeight.bold,
                               fontSize: 17,
                             ),

@@ -5,14 +5,10 @@ import 'package:url_launcher/url_launcher.dart';
 class ConsultaClienteScreen extends StatefulWidget {
   final String empresaId;
 
-  const ConsultaClienteScreen({
-    super.key,
-    required this.empresaId,
-  });
+  const ConsultaClienteScreen({super.key, required this.empresaId});
 
   @override
-  State<ConsultaClienteScreen> createState() =>
-      _ConsultaClienteScreenState();
+  State<ConsultaClienteScreen> createState() => _ConsultaClienteScreenState();
 }
 
 class _ConsultaClienteScreenState extends State<ConsultaClienteScreen> {
@@ -28,8 +24,10 @@ class _ConsultaClienteScreenState extends State<ConsultaClienteScreen> {
   }
 
   Future<void> enviarWhatsApp(Map<String, dynamic> item) async {
-    final telefone =
-        (item['telefone'] ?? '').toString().replaceAll(RegExp(r'[^0-9]'), '');
+    final telefone = (item['telefone'] ?? '').toString().replaceAll(
+      RegExp(r'[^0-9]'),
+      '',
+    );
 
     final mensagem = Uri.encodeComponent(
       'Olá ${item['cliente'] ?? ''}, sua OS ${item['numero_os'] ?? ''} está com status: ${item['status'] ?? ''}.\n\n'
@@ -41,10 +39,7 @@ class _ConsultaClienteScreenState extends State<ConsultaClienteScreen> {
 
     final url = Uri.parse('https://wa.me/55$telefone?text=$mensagem');
 
-    await launchUrl(
-      url,
-      mode: LaunchMode.externalApplication,
-    );
+    await launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
   @override
@@ -56,21 +51,13 @@ class _ConsultaClienteScreenState extends State<ConsultaClienteScreen> {
         backgroundColor: Colors.black,
         iconTheme: IconThemeData(color: dourado),
         centerTitle: true,
-        title: Image.asset(
-          'assets/images/elite_cell_logo.png',
-          height: 45,
-        ),
+        title: Image.asset('assets/images/elite_cell_logo.png', height: 45),
       ),
 
       body: Column(
         children: [
           Container(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 18,
-              bottom: 8,
-            ),
+            padding: EdgeInsets.only(left: 16, right: 16, top: 18, bottom: 8),
             child: Column(
               children: [
                 Text(
@@ -86,10 +73,7 @@ class _ConsultaClienteScreenState extends State<ConsultaClienteScreen> {
                 SizedBox(height: 4),
                 Text(
                   'Busque por nome, telefone, IMEI ou OS',
-                  style: TextStyle(
-                    color: Colors.white60,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.white60, fontSize: 14),
                 ),
               ],
             ),
@@ -124,8 +108,8 @@ class _ConsultaClienteScreenState extends State<ConsultaClienteScreen> {
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: os
-    .where('empresaId', isEqualTo: widget.empresaId)
-    .snapshots(),
+                  .where('empresaId', isEqualTo: widget.empresaId)
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return Center(
@@ -153,10 +137,9 @@ class _ConsultaClienteScreenState extends State<ConsultaClienteScreen> {
                           .toString()
                           .toLowerCase()
                           .contains(busca) ||
-                      (item['imei'] ?? '')
-                          .toString()
-                          .toLowerCase()
-                          .contains(busca) ||
+                      (item['imei'] ?? '').toString().toLowerCase().contains(
+                        busca,
+                      ) ||
                       (item['numero_os'] ?? '')
                           .toString()
                           .toLowerCase()
@@ -183,10 +166,7 @@ class _ConsultaClienteScreenState extends State<ConsultaClienteScreen> {
                   children: [
                     Card(
                       color: Color(0xFF111111),
-                      margin: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
+                      margin: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(18),
                         side: BorderSide(color: dourado),
@@ -194,10 +174,7 @@ class _ConsultaClienteScreenState extends State<ConsultaClienteScreen> {
                       child: ListTile(
                         leading: CircleAvatar(
                           backgroundColor: dourado,
-                          child: Icon(
-                            Icons.analytics,
-                            color: Colors.black,
-                          ),
+                          child: Icon(Icons.analytics, color: Colors.black),
                         ),
                         title: Text(
                           'Resumo encontrado',
@@ -244,8 +221,9 @@ class _ConsultaClienteScreenState extends State<ConsultaClienteScreen> {
                                 vertical: 10,
                               ),
                               leading: CircleAvatar(
-                                backgroundColor:
-                                    entregue ? Colors.greenAccent : dourado,
+                                backgroundColor: entregue
+                                    ? Colors.greenAccent
+                                    : dourado,
                                 child: Icon(
                                   Icons.phone_android,
                                   color: Colors.black,
@@ -268,10 +246,7 @@ class _ConsultaClienteScreenState extends State<ConsultaClienteScreen> {
                                 style: TextStyle(color: Colors.white70),
                               ),
                               trailing: IconButton(
-                                icon: Icon(
-                                  Icons.chat,
-                                  color: dourado,
-                                ),
+                                icon: Icon(Icons.chat, color: dourado),
                                 onPressed: () => enviarWhatsApp(item),
                               ),
                             ),

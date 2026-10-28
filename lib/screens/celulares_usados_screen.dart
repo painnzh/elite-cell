@@ -5,17 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'dossie_aparelho_screen.dart';
+
 class CelularesUsadosScreen extends StatefulWidget {
   final String empresaId;
 
-  const CelularesUsadosScreen({
-    super.key,
-    required this.empresaId,
-  });
+  const CelularesUsadosScreen({super.key, required this.empresaId});
 
   @override
-  State<CelularesUsadosScreen> createState() =>
-      _CelularesUsadosScreenState();
+  State<CelularesUsadosScreen> createState() => _CelularesUsadosScreenState();
 }
 
 class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
@@ -33,15 +31,63 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
   final observacaoController = TextEditingController();
 
   String statusSelecionado = 'Disponível';
+  bool publicadoNoCatalogo = false;
   String busca = '';
 
   File? fotoCelular;
 
-  final celulares =
-      FirebaseFirestore.instance.collection('celulares_usados');
+  final celulares = FirebaseFirestore.instance.collection('celulares_usados');
 
-  final financeiro =
-      FirebaseFirestore.instance.collection('financeiro');
+  final financeiro = FirebaseFirestore.instance.collection('financeiro');
+
+  void preencherFormulario(Map<String, dynamic>? item) {
+    marcaController.text = item?['marca']?.toString() ?? '';
+    modeloController.text = item?['modelo']?.toString() ?? '';
+    imeiController.text = item?['imei']?.toString() ?? '';
+    estadoController.text = item?['estado']?.toString() ?? '';
+    corController.text = item?['cor']?.toString() ?? '';
+    capacidadeController.text = item?['capacidade']?.toString() ?? '';
+    bateriaController.text = item?['bateria']?.toString() ?? '';
+    compraController.text = item?['valor_compra']?.toString() ?? '';
+    vendaController.text = item?['valor_venda']?.toString() ?? '';
+    observacaoController.text = item?['observacao']?.toString() ?? '';
+    statusSelecionado = item?['status']?.toString() ?? 'Disponível';
+    publicadoNoCatalogo = item?['publicadoCatalogo'] == true;
+    fotoCelular = null;
+  }
+
+  bool validarFormulario() {
+    final camposObrigatorios = [
+      marcaController.text,
+      modeloController.text,
+      imeiController.text,
+      estadoController.text,
+      capacidadeController.text,
+    ];
+    final compra = double.tryParse(compraController.text.replaceAll(',', '.'));
+    final venda = double.tryParse(vendaController.text.replaceAll(',', '.'));
+    final bateria = int.tryParse(bateriaController.text);
+
+    if (camposObrigatorios.any((campo) => campo.trim().isEmpty) ||
+        compra == null ||
+        venda == null ||
+        compra < 0 ||
+        venda < 0 ||
+        bateria == null ||
+        bateria < 0 ||
+        bateria > 100) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Preencha os campos obrigatórios e informe valores válidos.',
+          ),
+        ),
+      );
+      return false;
+    }
+
+    return true;
+  }
 
   double converterValor(dynamic valor) {
     return double.tryParse(valor.toString().replaceAll(',', '.')) ?? 0;
@@ -50,10 +96,7 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
   Future<void> escolherFoto(ImageSource origem) async {
     final picker = ImagePicker();
 
-    final imagem = await picker.pickImage(
-      source: origem,
-      imageQuality: 75,
-    );
+    final imagem = await picker.pickImage(source: origem, imageQuality: 75);
 
     if (imagem != null) {
       setState(() {
@@ -62,154 +105,179 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
     }
   }
 
-Future<void> salvarCelular() async {
-  await celulares.add({
-    'empresaId': widget.empresaId,
-    'marca': marcaController.text,
-    'modelo': modeloController.text,
-    'imei': imeiController.text,
-    'estado': estadoController.text,
-    'cor': corController.text,
-    'capacidade': capacidadeController.text,
-    'bateria': bateriaController.text,
-    'valor_compra': compraController.text,
-    'valor_venda': vendaController.text,
-    'observacao': observacaoController.text,
-    'status': statusSelecionado,
-    'foto_path': fotoCelular?.path ?? '',
-    'data': DateTime.now(),
-  });
-
-    marcaController.clear();
-    modeloController.clear();
-    imeiController.clear();
-    estadoController.clear();
-    corController.clear();
-    capacidadeController.clear();
-    bateriaController.clear();
-    compraController.clear();
-    vendaController.clear();
-    observacaoController.clear();
-
-    setState(() {
-      fotoCelular = null;
-      statusSelecionado = 'Disponível';
-    });
-
-    Navigator.pop(context);
-  }
-
-  Future<void> marcarComoVendido(
-  String id,
-  Map<String, dynamic> item,
-) async {
-  try {
-    final celularRef = celulares.doc(id);
-    final celularDoc = await celularRef.get();
-
-    if (!celularDoc.exists) {
-      throw Exception('Celular não encontrado.');
-    }
-
-    final dadosCelular = celularDoc.data();
-
-    if (dadosCelular == null ||
-        dadosCelular['empresaId'] != widget.empresaId) {
-      throw Exception('Este celular não pertence à sua empresa.');
-    }
-
-    if (dadosCelular['status'] != 'Disponível') {
-      throw Exception('Este celular não está disponível para venda.');
-    }
-
-    await celularRef.update({
-      'status': 'Vendido',
-      'vendido_em': DateTime.now(),
-    });
-
-    await financeiro.add({
+  Future<void> salvarCelular({String? id, String? fotoPathOriginal}) async {
+    final dados = {
+      'marca': marcaController.text,
+      'modelo': modeloController.text,
+      'imei': imeiController.text,
+      'estado': estadoController.text,
+      'cor': corController.text,
+      'capacidade': capacidadeController.text,
+      'bateria': bateriaController.text,
+      'valor_compra': compraController.text,
+      'valor_venda': vendaController.text,
+      'observacao': observacaoController.text,
+      'status': statusSelecionado,
+      'publicadoCatalogo': publicadoNoCatalogo,
+      'foto_path': fotoCelular?.path ?? fotoPathOriginal ?? '',
       'empresaId': widget.empresaId,
-      'descricao':
-          'Venda celular usado - ${item['marca'] ?? ''} ${item['modelo'] ?? ''}',
-      'valor': item['valor_venda'] ?? '0',
-      'tipo': 'Entrada',
-      'pagamento': 'Pix',
-      'data': DateTime.now(),
-    });
+    };
 
-    if (!mounted) return;
+    try {
+      if (id == null) {
+        await celulares.add({...dados, 'data': DateTime.now()});
+      } else {
+        await FirebaseFirestore.instance.runTransaction((transacao) async {
+          final documento = await transacao.get(celulares.doc(id));
+          if (!documento.exists ||
+              documento.data()?['empresaId'] != widget.empresaId) {
+            throw StateError('Você não tem acesso a este aparelho.');
+          }
+          transacao.update(celulares.doc(id), dados);
+        });
+      }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Celular vendido e lançamento financeiro registrado!'),
-      ),
-    );
-  } catch (e) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Erro ao registrar venda: $e')),
-    );
-  }
-}
-
-  
-Future<void> reverterVenda(
-  String id,
-  Map<String, dynamic> item,
-) async {
-  try {
-    final celularRef = celulares.doc(id);
-    final celularDoc = await celularRef.get();
-
-    if (!celularDoc.exists) {
-      throw Exception('Celular não encontrado.');
-    }
-
-    final dadosCelular = celularDoc.data();
-
-    if (dadosCelular == null ||
-        dadosCelular['empresaId'] != widget.empresaId) {
-      throw Exception('Este celular não pertence à sua empresa.');
-    }
-
-    if (dadosCelular['status'] != 'Vendido') {
-      throw Exception('Este celular não está marcado como vendido.');
-    }
-
-    await celularRef.update({
-      'status': 'Disponível',
-      'vendido_em': FieldValue.delete(),
-    });
-
-    await financeiro.add({
-      'empresaId': widget.empresaId,
-      'descricao':
-          'Estorno venda celular usado - ${item['marca'] ?? ''} ${item['modelo'] ?? ''}',
-      'valor': item['valor_venda'] ?? '0',
-      'tipo': 'Saída',
-      'pagamento': 'Estorno',
-      'data': DateTime.now(),
-    });
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Venda revertida e estorno lançado no financeiro',
+      if (!mounted) return;
+      preencherFormulario(null);
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            id == null ? 'Aparelho cadastrado.' : 'Aparelho atualizado.',
+          ),
         ),
-      ),
-    );
-  } catch (e) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Erro ao reverter venda: $e')),
-    );
+      );
+    } on StateError catch (erro) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(erro.message.toString())));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Não foi possível salvar o aparelho.')),
+      );
+    }
   }
-}
 
+  Future<void> marcarComoVendido(String id) async {
+    final celular = celulares.doc(id);
+    final lancamentoVenda = financeiro.doc();
+    final agora = Timestamp.now();
+
+    try {
+      await FirebaseFirestore.instance.runTransaction((transacao) async {
+        final documento = await transacao.get(celular);
+        final item = documento.data();
+
+        if (item == null) {
+          throw StateError('Aparelho não encontrado.');
+        }
+
+        if (item['empresaId'] != widget.empresaId) {
+          throw StateError('Você não tem acesso a este aparelho.');
+        }
+
+        if (item['status'] == 'Vendido') {
+          throw StateError('Este aparelho já foi vendido.');
+        }
+
+        transacao.update(celular, {
+          'status': 'Vendido',
+          'vendido_em': agora,
+          'financeiroVendaId': lancamentoVenda.id,
+        });
+
+        transacao.set(lancamentoVenda, {
+          'empresaId': widget.empresaId,
+          'descricao':
+              'Venda celular usado - ${item['marca'] ?? ''} ${item['modelo'] ?? ''}',
+          'valor': item['valor_venda'] ?? '0',
+          'tipo': 'Entrada',
+          'pagamento': 'Pix',
+          'data': agora,
+          'origem': 'celular_usado',
+          'celularUsadoId': id,
+        });
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Celular vendido e lançado no financeiro')),
+      );
+    } on StateError catch (erro) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(erro.message.toString())));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Não foi possível registrar a venda.')),
+      );
+    }
+  }
+
+  Future<void> reverterVenda(String id) async {
+    final celular = celulares.doc(id);
+    final lancamentoEstorno = financeiro.doc();
+    final agora = Timestamp.now();
+
+    try {
+      await FirebaseFirestore.instance.runTransaction((transacao) async {
+        final documento = await transacao.get(celular);
+        final item = documento.data();
+
+        if (item == null) {
+          throw StateError('Aparelho não encontrado.');
+        }
+
+        if (item['empresaId'] != widget.empresaId) {
+          throw StateError('Você não tem acesso a este aparelho.');
+        }
+
+        if (item['status'] != 'Vendido') {
+          throw StateError('Este aparelho não possui uma venda para reverter.');
+        }
+
+        transacao.update(celular, {
+          'status': 'Disponível',
+          'vendido_em': FieldValue.delete(),
+          'financeiroEstornoId': lancamentoEstorno.id,
+        });
+
+        transacao.set(lancamentoEstorno, {
+          'empresaId': widget.empresaId,
+          'descricao':
+              'Estorno venda celular usado - ${item['marca'] ?? ''} ${item['modelo'] ?? ''}',
+          'valor': item['valor_venda'] ?? '0',
+          'tipo': 'Saída',
+          'pagamento': 'Estorno',
+          'data': agora,
+          'origem': 'estorno_celular_usado',
+          'celularUsadoId': id,
+          'referenciaLancamentoId': item['financeiroVendaId'],
+        });
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Venda revertida e estorno lançado no financeiro'),
+        ),
+      );
+    } on StateError catch (erro) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(erro.message.toString())));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Não foi possível reverter a venda.')),
+      );
+    }
+  }
 
   Future<void> enviarWhatsApp(Map<String, dynamic> item) async {
     final texto = Uri.encodeComponent(
@@ -224,10 +292,7 @@ Future<void> reverterVenda(
 
     final url = Uri.parse('https://wa.me/?text=$texto');
 
-    await launchUrl(
-      url,
-      mode: LaunchMode.externalApplication,
-    );
+    await launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
   InputDecoration decoracaoCampo(String label) {
@@ -256,12 +321,7 @@ Future<void> reverterVenda(
     );
   }
 
-  Widget dashboardCard(
-    String titulo,
-    String valor,
-    Color cor,
-    IconData icon,
-  ) {
+  Widget dashboardCard(String titulo, String valor, Color cor, IconData icon) {
     return Container(
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -284,10 +344,7 @@ Future<void> reverterVenda(
           Text(
             titulo,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: Colors.white70, fontSize: 12),
           ),
           SizedBox(height: 4),
           Text(
@@ -397,7 +454,10 @@ Future<void> reverterVenda(
     );
   }
 
-  void abrirFormulario() {
+  void abrirFormulario({String? id, Map<String, dynamic>? item}) {
+    preencherFormulario(item);
+    final fotoPathOriginal = item?['foto_path']?.toString();
+
     showDialog(
       context: context,
       builder: (_) {
@@ -406,7 +466,7 @@ Future<void> reverterVenda(
             return AlertDialog(
               backgroundColor: Color(0xFF111111),
               title: Text(
-                'Cadastrar Celular',
+                id == null ? 'Cadastrar Celular' : 'Editar Celular',
                 style: TextStyle(color: dourado),
               ),
               content: SingleChildScrollView(
@@ -496,19 +556,42 @@ Future<void> reverterVenda(
                       dropdownColor: Color(0xFF111111),
                       style: TextStyle(color: Colors.white),
                       decoration: decoracaoCampo('Status'),
-                      items: [
-                        'Disponível',
-                        'Reservado',
-                        'Vendido',
-                      ].map((item) {
-                        return DropdownMenuItem(
-                          value: item,
-                          child: Text(item),
-                        );
-                      }).toList(),
+                      items:
+                          [
+                            'Em avaliação',
+                            'Em reparo',
+                            'Pronto para venda',
+                            'Disponível',
+                            'Reservado',
+                            'Vendido',
+                          ].map((item) {
+                            return DropdownMenuItem(
+                              value: item,
+                              child: Text(item),
+                            );
+                          }).toList(),
                       onChanged: (valor) {
                         setState(() {
                           statusSelecionado = valor!;
+                        });
+                      },
+                    ),
+
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      activeThumbColor: dourado,
+                      title: Text(
+                        'Divulgar no catálogo',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      subtitle: Text(
+                        'Exibe o aparelho disponível no catálogo do cliente.',
+                        style: TextStyle(color: Colors.white60),
+                      ),
+                      value: publicadoNoCatalogo,
+                      onChanged: (valor) {
+                        setModalState(() {
+                          publicadoNoCatalogo = valor;
                         });
                       },
                     ),
@@ -524,7 +607,10 @@ Future<void> reverterVenda(
                   ),
                 ),
                 ElevatedButton(
-                  onPressed: salvarCelular,
+                  onPressed: () {
+                    if (!validarFormulario()) return;
+                    salvarCelular(id: id, fotoPathOriginal: fotoPathOriginal);
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: dourado,
                     foregroundColor: Colors.black,
@@ -539,6 +625,69 @@ Future<void> reverterVenda(
     );
   }
 
+  Future<void> excluirCelular(String id) async {
+    try {
+      await FirebaseFirestore.instance.runTransaction((transacao) async {
+        final documento = await transacao.get(celulares.doc(id));
+        final item = documento.data();
+
+        if (item == null || item['empresaId'] != widget.empresaId) {
+          throw StateError('Você não tem acesso a este aparelho.');
+        }
+
+        if (item['status'] == 'Vendido') {
+          throw StateError('Reverta a venda antes de excluir o aparelho.');
+        }
+
+        transacao.delete(celulares.doc(id));
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Aparelho excluído.')));
+    } on StateError catch (erro) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(erro.message.toString())));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Não foi possível excluir o aparelho.')),
+      );
+    }
+  }
+
+  Future<void> confirmarExclusao(String id) async {
+    final confirmou = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Color(0xFF111111),
+        title: Text('Excluir aparelho', style: TextStyle(color: dourado)),
+        content: Text(
+          'Esta ação não poderá ser desfeita.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: Text('Excluir'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmou == true) {
+      await excluirCelular(id);
+    }
+  }
+
   Color corStatus(String status) {
     if (status == 'Vendido') return Colors.greenAccent;
     if (status == 'Reservado') return Colors.orangeAccent;
@@ -548,9 +697,7 @@ Future<void> reverterVenda(
   Widget imagemCelular(String fotoPath, Color cor) {
     if (fotoPath.isNotEmpty && File(fotoPath).existsSync()) {
       return ClipRRect(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(18),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
         child: Image.file(
           File(fotoPath),
           height: 180,
@@ -565,22 +712,13 @@ Future<void> reverterVenda(
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.black,
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(18),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
-      child: Icon(
-        Icons.phone_iphone,
-        color: cor,
-        size: 60,
-      ),
+      child: Icon(Icons.phone_iphone, color: cor, size: 60),
     );
   }
 
-  Widget cardCelular(
-    String id,
-    Map<String, dynamic> item,
-  ) {
+  Widget cardCelular(String id, Map<String, dynamic> item) {
     final compra = converterValor(item['valor_compra']);
     final venda = converterValor(item['valor_venda']);
     final lucro = venda - compra;
@@ -636,10 +774,7 @@ Future<void> reverterVenda(
 
                 Text(
                   'Venda: R\$ ${item['valor_venda'] ?? ''}',
-                  style: TextStyle(
-                    color: dourado,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(color: dourado, fontWeight: FontWeight.bold),
                 ),
 
                 Text(
@@ -681,16 +816,44 @@ Future<void> reverterVenda(
                       onPressed: () => enviarWhatsApp(item),
                     ),
 
+                    IconButton(
+                      icon: Icon(Icons.edit, color: Colors.blueAccent),
+                      onPressed: () => abrirFormulario(id: id, item: item),
+                    ),
+
+                    IconButton(
+                      tooltip: 'Abrir dossiê do aparelho',
+                      icon: Icon(Icons.folder_shared, color: dourado),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => DossieAparelhoScreen(
+                            empresaId: widget.empresaId,
+                            aparelhoId: id,
+                          ),
+                        ),
+                      ),
+                    ),
+
                     if (status != 'Vendido')
                       IconButton(
-                        icon: Icon(Icons.check_circle, color: Colors.greenAccent),
-                        onPressed: () => marcarComoVendido(id, item),
+                        icon: Icon(Icons.delete, color: Colors.redAccent),
+                        onPressed: () => confirmarExclusao(id),
+                      ),
+
+                    if (status != 'Vendido')
+                      IconButton(
+                        icon: Icon(
+                          Icons.check_circle,
+                          color: Colors.greenAccent,
+                        ),
+                        onPressed: () => marcarComoVendido(id),
                       ),
 
                     if (status == 'Vendido')
                       IconButton(
                         icon: Icon(Icons.undo, color: Colors.redAccent),
-                        onPressed: () => reverterVenda(id, item),
+                        onPressed: () => reverterVenda(id),
                       ),
                   ],
                 ),
@@ -711,10 +874,7 @@ Future<void> reverterVenda(
         backgroundColor: Colors.black,
         iconTheme: IconThemeData(color: dourado),
         centerTitle: true,
-        title: Text(
-          'Celulares Usados',
-          style: TextStyle(color: dourado),
-        ),
+        title: Text('Celulares Usados', style: TextStyle(color: dourado)),
       ),
 
       floatingActionButton: FloatingActionButton(
@@ -773,26 +933,22 @@ Future<void> reverterVenda(
                           .toString()
                           .toLowerCase()
                           .contains(busca) ||
-                      (item['modelo'] ?? '')
-                          .toString()
-                          .toLowerCase()
-                          .contains(busca) ||
-                      (item['imei'] ?? '')
-                          .toString()
-                          .toLowerCase()
-                          .contains(busca) ||
-                      (item['status'] ?? '')
-                          .toString()
-                          .toLowerCase()
-                          .contains(busca) ||
+                      (item['modelo'] ?? '').toString().toLowerCase().contains(
+                        busca,
+                      ) ||
+                      (item['imei'] ?? '').toString().toLowerCase().contains(
+                        busca,
+                      ) ||
+                      (item['status'] ?? '').toString().toLowerCase().contains(
+                        busca,
+                      ) ||
                       (item['capacidade'] ?? '')
                           .toString()
                           .toLowerCase()
                           .contains(busca) ||
-                      (item['cor'] ?? '')
-                          .toString()
-                          .toLowerCase()
-                          .contains(busca);
+                      (item['cor'] ?? '').toString().toLowerCase().contains(
+                        busca,
+                      );
                 }).toList();
 
                 return ListView(

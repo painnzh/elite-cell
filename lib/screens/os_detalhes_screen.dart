@@ -7,10 +7,12 @@ import 'package:url_launcher/url_launcher.dart';
 
 class OsDetalhesScreen extends StatefulWidget {
   final Map dados;
+  final String empresaId;
 
   const OsDetalhesScreen({
     super.key,
     required this.dados,
+    required this.empresaId,
   });
 
   @override
@@ -36,19 +38,24 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
   void initState() {
     super.initState();
 
-    clienteController =
-        TextEditingController(text: widget.dados['cliente'] ?? '');
-    telefoneController =
-        TextEditingController(text: widget.dados['telefone'] ?? '');
+    clienteController = TextEditingController(
+      text: widget.dados['cliente'] ?? '',
+    );
+    telefoneController = TextEditingController(
+      text: widget.dados['telefone'] ?? '',
+    );
     imeiController = TextEditingController(text: widget.dados['imei'] ?? '');
     marcaController = TextEditingController(text: widget.dados['marca'] ?? '');
-    modeloController =
-        TextEditingController(text: widget.dados['modelo'] ?? '');
-    defeitoController =
-        TextEditingController(text: widget.dados['defeito'] ?? '');
+    modeloController = TextEditingController(
+      text: widget.dados['modelo'] ?? '',
+    );
+    defeitoController = TextEditingController(
+      text: widget.dados['defeito'] ?? '',
+    );
     valorController = TextEditingController(text: widget.dados['valor'] ?? '');
-    observacaoController =
-        TextEditingController(text: widget.dados['observacao'] ?? '');
+    observacaoController = TextEditingController(
+      text: widget.dados['observacao'] ?? '',
+    );
 
     status = widget.dados['status'] ?? 'Em análise';
   }
@@ -71,45 +78,37 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
     return valor == true ? '✅' : '❌';
   }
 
-  
-Future<void> baixarEstoqueAutomaticamente() async {
-  if (status != 'Entregue') return;
-  if (widget.dados['estoque_baixado'] == true) return;
+  Future<void> baixarEstoqueAutomaticamente() async {
+    if (status != 'Entregue') return;
+    if (widget.dados['estoque_baixado'] == true) return;
 
-  final String peca = (widget.dados['peca_usada'] ?? '').toString();
-  final int quantidadeUsada =
-      converterInteiro(widget.dados['quantidade_peca']);
+    final String peca = (widget.dados['peca_usada'] ?? '').toString();
+    final int quantidadeUsada = converterInteiro(
+      widget.dados['quantidade_peca'],
+    );
 
-  final String empresaId =
-      (widget.dados['empresaId'] ?? '').toString();
+    if (peca.isEmpty || quantidadeUsada <= 0) return;
 
-  if (peca.isEmpty || quantidadeUsada <= 0 || empresaId.isEmpty) {
-    return;
+    final estoqueBusca = await FirebaseFirestore.instance
+        .collection('estoque')
+        .where('empresaId', isEqualTo: widget.empresaId)
+        .where('nome', isEqualTo: peca)
+        .limit(1)
+        .get();
+
+    if (estoqueBusca.docs.isEmpty) return;
+
+    final docEstoque = estoqueBusca.docs.first;
+    final dadosEstoque = docEstoque.data();
+
+    final int estoqueAtual = converterInteiro(dadosEstoque['quantidade']);
+    final int novoEstoque = estoqueAtual - quantidadeUsada;
+
+    await FirebaseFirestore.instance
+        .collection('estoque')
+        .doc(docEstoque.id)
+        .update({'quantidade': novoEstoque < 0 ? '0' : novoEstoque.toString()});
   }
-
-  final estoqueBusca = await FirebaseFirestore.instance
-      .collection('estoque')
-      .where('empresaId', isEqualTo: empresaId)
-      .where('nome', isEqualTo: peca)
-      .limit(1)
-      .get();
-
-  if (estoqueBusca.docs.isEmpty) return;
-
-  final docEstoque = estoqueBusca.docs.first;
-  final dadosEstoque = docEstoque.data();
-
-  final int estoqueAtual = converterInteiro(dadosEstoque['quantidade']);
-  final int novoEstoque = estoqueAtual - quantidadeUsada;
-
-  await FirebaseFirestore.instance
-      .collection('estoque')
-      .doc(docEstoque.id)
-      .update({
-    'quantidade': novoEstoque < 0 ? '0' : novoEstoque.toString(),
-  });
-}
-
 
   Future<void> salvarAlteracoes() async {
     final id = widget.dados['id'];
@@ -120,19 +119,20 @@ Future<void> baixarEstoqueAutomaticamente() async {
         .collection('ordens_servico')
         .doc(id)
         .update({
-      'cliente': clienteController.text,
-      'telefone': telefoneController.text,
-      'imei': imeiController.text,
-      'marca': marcaController.text,
-      'modelo': modeloController.text,
-      'defeito': defeitoController.text,
-      'valor': valorController.text,
-      'observacao': observacaoController.text,
-      'status': status,
-      'estoque_baixado':
-          status == 'Entregue' ? true : widget.dados['estoque_baixado'] ?? false,
-      'atualizado_em': DateTime.now(),
-    });
+          'cliente': clienteController.text,
+          'telefone': telefoneController.text,
+          'imei': imeiController.text,
+          'marca': marcaController.text,
+          'modelo': modeloController.text,
+          'defeito': defeitoController.text,
+          'valor': valorController.text,
+          'observacao': observacaoController.text,
+          'status': status,
+          'estoque_baixado': status == 'Entregue'
+              ? true
+              : widget.dados['estoque_baixado'] ?? false,
+          'atualizado_em': DateTime.now(),
+        });
 
     widget.dados['status'] = status;
 
@@ -144,9 +144,9 @@ Future<void> baixarEstoqueAutomaticamente() async {
       editando = false;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('OS atualizada com sucesso')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('OS atualizada com sucesso')));
   }
 
   Future<void> excluirOS() async {
@@ -159,9 +159,9 @@ Future<void> baixarEstoqueAutomaticamente() async {
 
     Navigator.pop(context);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('OS excluída com sucesso')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('OS excluída com sucesso')));
   }
 
   Future<void> gerarPDF() async {
@@ -174,23 +174,15 @@ Future<void> baixarEstoqueAutomaticamente() async {
           children: [
             pw.Text(
               '$titulo: ',
-              style: pw.TextStyle(
-                fontSize: 10,
-                fontWeight: pw.FontWeight.bold,
-              ),
+              style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
             ),
             pw.Expanded(
               child: pw.Container(
                 padding: pw.EdgeInsets.only(bottom: 2),
                 decoration: pw.BoxDecoration(
-                  border: pw.Border(
-                    bottom: pw.BorderSide(width: 0.5),
-                  ),
+                  border: pw.Border(bottom: pw.BorderSide(width: 0.5)),
                 ),
-                child: pw.Text(
-                  valor,
-                  style: pw.TextStyle(fontSize: 10),
-                ),
+                child: pw.Text(valor, style: pw.TextStyle(fontSize: 10)),
               ),
             ),
           ],
@@ -207,15 +199,10 @@ Future<void> baixarEstoqueAutomaticamente() async {
             pw.Container(
               width: 10,
               height: 10,
-              decoration: pw.BoxDecoration(
-                border: pw.Border.all(width: 0.8),
-              ),
+              decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.8)),
             ),
             pw.SizedBox(width: 6),
-            pw.Text(
-              texto,
-              style: pw.TextStyle(fontSize: 9),
-            ),
+            pw.Text(texto, style: pw.TextStyle(fontSize: 9)),
           ],
         ),
       );
@@ -232,9 +219,7 @@ Future<void> baixarEstoqueAutomaticamente() async {
               pw.Container(
                 width: double.infinity,
                 padding: pw.EdgeInsets.all(10),
-                decoration: pw.BoxDecoration(
-                  border: pw.Border.all(width: 1),
-                ),
+                decoration: pw.BoxDecoration(border: pw.Border.all(width: 1)),
                 child: pw.Column(
                   children: [
                     pw.Text(
@@ -303,9 +288,7 @@ Future<void> baixarEstoqueAutomaticamente() async {
               ),
               pw.Container(
                 height: 42,
-                decoration: pw.BoxDecoration(
-                  border: pw.Border.all(width: 0.5),
-                ),
+                decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.5)),
               ),
 
               pw.SizedBox(height: 10),
@@ -313,9 +296,7 @@ Future<void> baixarEstoqueAutomaticamente() async {
               pw.Container(
                 width: double.infinity,
                 padding: pw.EdgeInsets.all(8),
-                decoration: pw.BoxDecoration(
-                  border: pw.Border.all(width: 0.8),
-                ),
+                decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.8)),
                 child: pw.Column(
                   children: [
                     pw.Text(
@@ -361,9 +342,7 @@ Future<void> baixarEstoqueAutomaticamente() async {
               ),
               pw.Container(
                 height: 36,
-                decoration: pw.BoxDecoration(
-                  border: pw.Border.all(width: 0.5),
-                ),
+                decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.5)),
               ),
 
               pw.SizedBox(height: 8),
@@ -461,14 +440,11 @@ Future<void> baixarEstoqueAutomaticamente() async {
       ),
     );
 
-    await Printing.layoutPdf(
-      onLayout: (format) async => pdf.save(),
-    );
+    await Printing.layoutPdf(onLayout: (format) async => pdf.save());
   }
 
   Future<void> enviarWhatsApp() async {
-    final telefone =
-        telefoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
+    final telefone = telefoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
 
     final mensagem = Uri.encodeComponent(
       'Olá ${clienteController.text}, sua OS ${widget.dados['numero_os'] ?? ''} da Elite Cell está com status: $status.\n\n'
@@ -480,10 +456,7 @@ Future<void> baixarEstoqueAutomaticamente() async {
 
     final url = Uri.parse('https://wa.me/55$telefone?text=$mensagem');
 
-    await launchUrl(
-      url,
-      mode: LaunchMode.externalApplication,
-    );
+    await launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
   InputDecoration decoracaoCampo(String label) {
@@ -523,17 +496,11 @@ Future<void> baixarEstoqueAutomaticamente() async {
       child: ListTile(
         title: Text(
           titulo,
-          style: TextStyle(
-            color: dourado,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: dourado, fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
           controller.text,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-          ),
+          style: TextStyle(color: Colors.white, fontSize: 16),
         ),
       ),
     );
@@ -552,17 +519,11 @@ Future<void> baixarEstoqueAutomaticamente() async {
       child: ListTile(
         title: Text(
           titulo,
-          style: TextStyle(
-            color: dourado,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: dourado, fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
           valor,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-          ),
+          style: TextStyle(color: Colors.white, fontSize: 16),
         ),
       ),
     );
@@ -573,14 +534,8 @@ Future<void> baixarEstoqueAutomaticamente() async {
 
     return ListTile(
       dense: true,
-      leading: Text(
-        iconeChecklist(valor),
-        style: TextStyle(fontSize: 18),
-      ),
-      title: Text(
-        titulo,
-        style: TextStyle(color: Colors.white),
-      ),
+      leading: Text(iconeChecklist(valor), style: TextStyle(fontSize: 18)),
+      title: Text(titulo, style: TextStyle(color: Colors.white)),
       trailing: Text(
         valor ? 'OK' : 'NÃO',
         style: TextStyle(
@@ -641,10 +596,7 @@ Future<void> baixarEstoqueAutomaticamente() async {
         return Dialog(
           backgroundColor: Colors.black,
           child: InteractiveViewer(
-            child: Image.network(
-              fotoUrl,
-              fit: BoxFit.contain,
-            ),
+            child: Image.network(fotoUrl, fit: BoxFit.contain),
           ),
         );
       },
@@ -700,10 +652,11 @@ Future<void> baixarEstoqueAutomaticamente() async {
 
     final fotoTras = (widget.dados['foto_tras_url'] ?? '').toString();
     final fotoImei = (widget.dados['foto_imei_url'] ?? '').toString();
-    final fotoAntesDepois =
-        (widget.dados['foto_antes_depois_url'] ?? '').toString();
+    final fotoAntesDepois = (widget.dados['foto_antes_depois_url'] ?? '')
+        .toString();
 
-    final existeAlgumaFoto = fotoFrente.isNotEmpty ||
+    final existeAlgumaFoto =
+        fotoFrente.isNotEmpty ||
         fotoTras.isNotEmpty ||
         fotoImei.isNotEmpty ||
         fotoAntesDepois.isNotEmpty;
@@ -757,8 +710,7 @@ Future<void> baixarEstoqueAutomaticamente() async {
   Widget build(BuildContext context) {
     final numeroOS = widget.dados['numero_os'] ?? 'Sem número';
     final pecaUsada = (widget.dados['peca_usada'] ?? '').toString();
-    final quantidadePeca =
-        (widget.dados['quantidade_peca'] ?? '').toString();
+    final quantidadePeca = (widget.dados['quantidade_peca'] ?? '').toString();
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -766,10 +718,7 @@ Future<void> baixarEstoqueAutomaticamente() async {
         backgroundColor: Colors.black,
         iconTheme: IconThemeData(color: dourado),
         centerTitle: true,
-        title: Text(
-          'Detalhes da OS',
-          style: TextStyle(color: dourado),
-        ),
+        title: Text('Detalhes da OS', style: TextStyle(color: dourado)),
         actions: [
           IconButton(
             icon: Icon(Icons.chat, color: dourado),
@@ -784,10 +733,7 @@ Future<void> baixarEstoqueAutomaticamente() async {
             onPressed: excluirOS,
           ),
           IconButton(
-            icon: Icon(
-              editando ? Icons.save : Icons.edit,
-              color: dourado,
-            ),
+            icon: Icon(editando ? Icons.save : Icons.edit, color: dourado),
             onPressed: () {
               if (editando) {
                 salvarAlteracoes();
@@ -833,10 +779,7 @@ Future<void> baixarEstoqueAutomaticamente() async {
                     ),
                   ),
                   SizedBox(height: 6),
-                  Text(
-                    status,
-                    style: TextStyle(color: Colors.white70),
-                  ),
+                  Text(status, style: TextStyle(color: Colors.white70)),
                 ],
               ),
             ),
@@ -859,20 +802,18 @@ Future<void> baixarEstoqueAutomaticamente() async {
               dropdownColor: Color(0xFF111111),
               style: TextStyle(color: Colors.white),
               decoration: decoracaoCampo('Status'),
-              items: [
-                'Em análise',
-                'Aprovado',
-                'Aguardando peça',
-                'Em reparo',
-                'Pronto',
-                'Entregue',
-                'Cancelado',
-              ].map((item) {
-                return DropdownMenuItem(
-                  value: item,
-                  child: Text(item),
-                );
-              }).toList(),
+              items:
+                  [
+                    'Em análise',
+                    'Aprovado',
+                    'Aguardando peça',
+                    'Em reparo',
+                    'Pronto',
+                    'Entregue',
+                    'Cancelado',
+                  ].map((item) {
+                    return DropdownMenuItem(value: item, child: Text(item));
+                  }).toList(),
               onChanged: editando
                   ? (valor) {
                       if (valor != null) {
@@ -885,11 +826,7 @@ Future<void> baixarEstoqueAutomaticamente() async {
             ),
             SizedBox(height: 20),
             if (editando)
-              botaoAcao(
-                Icons.save,
-                'Salvar alterações',
-                salvarAlteracoes,
-              ),
+              botaoAcao(Icons.save, 'Salvar alterações', salvarAlteracoes),
           ],
         ),
       ),

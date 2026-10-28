@@ -19,23 +19,12 @@ class DashboardScreen extends StatelessWidget {
 
   final Color dourado = Color(0xFFD4AF37);
 
-  CollectionReference<Map<String, dynamic>> get clientes =>
-      FirebaseFirestore.instance.collection('clientes');
-
-  CollectionReference<Map<String, dynamic>> get os =>
-      FirebaseFirestore.instance.collection('ordens_servico');
-
-  CollectionReference<Map<String, dynamic>> get estoque =>
-      FirebaseFirestore.instance.collection('estoque');
-
-  CollectionReference<Map<String, dynamic>> get financeiro =>
-      FirebaseFirestore.instance.collection('financeiro');
-
-  CollectionReference<Map<String, dynamic>> get garantias =>
-      FirebaseFirestore.instance.collection('garantias');
-
-  CollectionReference<Map<String, dynamic>> get tecnicos =>
-      FirebaseFirestore.instance.collection('tecnicos');
+  final clientes = FirebaseFirestore.instance.collection('clientes');
+  final os = FirebaseFirestore.instance.collection('ordens_servico');
+  final estoque = FirebaseFirestore.instance.collection('estoque');
+  final financeiro = FirebaseFirestore.instance.collection('financeiro');
+  final garantias = FirebaseFirestore.instance.collection('garantias');
+  final tecnicos = FirebaseFirestore.instance.collection('tecnicos');
 
   double converterValor(dynamic valor) {
     return double.tryParse(valor.toString().replaceAll(',', '.')) ?? 0;
@@ -64,10 +53,7 @@ class DashboardScreen extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF111111),
-            Color(0xFF1A1A1A),
-          ],
+          colors: [Color(0xFF111111), Color(0xFF1A1A1A)],
         ),
         border: Border.all(color: dourado, width: 1.5),
         boxShadow: [
@@ -80,10 +66,7 @@ class DashboardScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Image.asset(
-            'assets/images/elite_cell_logo.png',
-            height: 80,
-          ),
+          Image.asset('assets/images/elite_cell_logo.png', height: 80),
           SizedBox(height: 10),
           Text(
             'ELITE CELL',
@@ -98,10 +81,7 @@ class DashboardScreen extends StatelessWidget {
           Text(
             'Sistema Premium de Assistência Técnica',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: Colors.white70, fontSize: 14),
           ),
         ],
       ),
@@ -110,8 +90,9 @@ class DashboardScreen extends StatelessWidget {
 
   Widget metaEmpresaCard(double faturamentoMes) {
     final double metaEmpresa = 5000;
-    final double percentual =
-        metaEmpresa == 0 ? 0 : faturamentoMes / metaEmpresa;
+    final double percentual = metaEmpresa == 0
+        ? 0
+        : faturamentoMes / metaEmpresa;
 
     return Container(
       width: double.infinity,
@@ -121,10 +102,7 @@ class DashboardScreen extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF111111),
-            Color(0xFF1B1B1B),
-          ],
+          colors: [Color(0xFF111111), Color(0xFF1B1B1B)],
         ),
         border: Border.all(color: dourado, width: 1.4),
         boxShadow: [
@@ -200,10 +178,7 @@ class DashboardScreen extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF111111),
-            Color(0xFF1B1B1B),
-          ],
+          colors: [Color(0xFF111111), Color(0xFF1B1B1B)],
         ),
         border: Border.all(color: dourado),
         boxShadow: [
@@ -253,10 +228,7 @@ class DashboardScreen extends StatelessWidget {
 
                         return Text(
                           texto,
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 10,
-                          ),
+                          style: TextStyle(color: Colors.white70, fontSize: 10),
                         );
                       },
                     ),
@@ -307,7 +279,10 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget produtividadeTecnicos(QuerySnapshot tecnicosSnapshot, QuerySnapshot osSnapshot) {
+  Widget produtividadeTecnicos(
+    QuerySnapshot tecnicosSnapshot,
+    QuerySnapshot osSnapshot,
+  ) {
     final agora = DateTime.now();
     final listaTecnicos = tecnicosSnapshot.docs;
 
@@ -359,8 +334,7 @@ class DashboardScreen extends StatelessWidget {
     }
 
     ranking.sort(
-      (a, b) => (b['produzido'] as double)
-          .compareTo(a['produzido'] as double),
+      (a, b) => (b['produzido'] as double).compareTo(a['produzido'] as double),
     );
 
     if (ranking.isEmpty) {
@@ -375,10 +349,7 @@ class DashboardScreen extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF111111),
-            Color(0xFF1A1A1A),
-          ],
+          colors: [Color(0xFF111111), Color(0xFF1A1A1A)],
         ),
         border: Border.all(color: dourado, width: 1.4),
         boxShadow: [
@@ -485,9 +456,7 @@ class DashboardScreen extends StatelessWidget {
                   Text(
                     '${(percentual * 100).toStringAsFixed(0)}% da meta',
                     style: TextStyle(
-                      color: percentual >= 1
-                          ? Colors.greenAccent
-                          : dourado,
+                      color: percentual >= 1 ? Colors.greenAccent : dourado,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -508,29 +477,36 @@ class DashboardScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.black,
         centerTitle: true,
-        title: Image.asset(
-          'assets/images/elite_cell_logo.png',
-          height: 55,
-        ),
+        title: Image.asset('assets/images/elite_cell_logo.png', height: 55),
       ),
 
       body: StreamBuilder<QuerySnapshot>(
         stream: os.where('empresaId', isEqualTo: empresaId).snapshots(),
         builder: (context, osSnapshot) {
           return StreamBuilder<QuerySnapshot>(
-            stream: clientes.where('empresaId', isEqualTo: empresaId).snapshots(),
+            stream: clientes
+                .where('empresaId', isEqualTo: empresaId)
+                .snapshots(),
             builder: (context, clientesSnapshot) {
               return StreamBuilder<QuerySnapshot>(
-                stream: estoque.where('empresaId', isEqualTo: empresaId).snapshots(),
+                stream: estoque
+                    .where('empresaId', isEqualTo: empresaId)
+                    .snapshots(),
                 builder: (context, estoqueSnapshot) {
                   return StreamBuilder<QuerySnapshot>(
-                    stream: financeiro.where('empresaId', isEqualTo: empresaId).snapshots(),
+                    stream: financeiro
+                        .where('empresaId', isEqualTo: empresaId)
+                        .snapshots(),
                     builder: (context, financeiroSnapshot) {
                       return StreamBuilder<QuerySnapshot>(
-                        stream: garantias.where('empresaId', isEqualTo: empresaId).snapshots(),
+                        stream: garantias
+                            .where('empresaId', isEqualTo: empresaId)
+                            .snapshots(),
                         builder: (context, garantiasSnapshot) {
                           return StreamBuilder<QuerySnapshot>(
-                            stream: tecnicos.where('empresaId', isEqualTo: empresaId).snapshots(),
+                            stream: tecnicos
+                                .where('empresaId', isEqualTo: empresaId)
+                                .snapshots(),
                             builder: (context, tecnicosSnapshot) {
                               if (!osSnapshot.hasData ||
                                   !clientesSnapshot.hasData ||
@@ -574,8 +550,8 @@ class DashboardScreen extends StatelessWidget {
                                 }
 
                                 if (dados['data'] is Timestamp) {
-                                  final data =
-                                      (dados['data'] as Timestamp).toDate();
+                                  final data = (dados['data'] as Timestamp)
+                                      .toDate();
 
                                   if (data.month == agora.month &&
                                       data.year == agora.year) {
@@ -615,8 +591,8 @@ class DashboardScreen extends StatelessWidget {
                                 }
 
                                 if (dados['data'] is Timestamp) {
-                                  final data =
-                                      (dados['data'] as Timestamp).toDate();
+                                  final data = (dados['data'] as Timestamp)
+                                      .toDate();
 
                                   if (data.month == agora.month &&
                                       data.year == agora.year &&
@@ -759,11 +735,7 @@ class DashboardScreen extends StatelessWidget {
 
                                     SizedBox(height: 24),
 
-                                    graficoFinanceiro(
-                                      entradas,
-                                      saidas,
-                                      saldo,
-                                    ),
+                                    graficoFinanceiro(entradas, saidas, saldo),
 
                                     SizedBox(height: 24),
 
@@ -812,14 +784,16 @@ class DashboardScreen extends StatelessWidget {
                                           context,
                                           Icons.storefront,
                                           'Catálogo Cliente',
-                                          CatalogoClienteScreen(empresaId: empresaId),
+                                          CatalogoClienteScreen(
+                                            empresaId: empresaId,
+                                          ),
                                         ),
-					menuCard(
- 					  context,
- 					  Icons.people,
-					  'Clientes',
-					  ClientesScreen(empresaId: empresaId),
-					),
+                                        menuCard(
+                                          context,
+                                          Icons.people,
+                                          'Clientes',
+                                          ClientesScreen(empresaId: empresaId),
+                                        ),
                                         menuCard(
                                           context,
                                           Icons.inventory,
@@ -830,13 +804,17 @@ class DashboardScreen extends StatelessWidget {
                                           context,
                                           Icons.phone_android,
                                           'Celulares Usados',
-                                          CelularesUsadosScreen(empresaId: empresaId),
+                                          CelularesUsadosScreen(
+                                            empresaId: empresaId,
+                                          ),
                                         ),
                                         menuCard(
                                           context,
                                           Icons.attach_money,
                                           'Financeiro',
-                                          FinanceiroScreen(empresaId: empresaId),
+                                          FinanceiroScreen(
+                                            empresaId: empresaId,
+                                          ),
                                         ),
                                         menuCard(
                                           context,
@@ -848,7 +826,9 @@ class DashboardScreen extends StatelessWidget {
                                           context,
                                           Icons.search,
                                           'Consulta Cliente',
-                                          ConsultaClienteScreen(empresaId: empresaId),
+                                          ConsultaClienteScreen(
+                                            empresaId: empresaId,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -868,9 +848,7 @@ class DashboardScreen extends StatelessWidget {
 
                                     Text(
                                       'Versão V2 Premium',
-                                      style: TextStyle(
-                                        color: Colors.white54,
-                                      ),
+                                      style: TextStyle(color: Colors.white54),
                                     ),
 
                                     SizedBox(height: 30),
@@ -892,22 +870,14 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget indicador(
-    IconData icon,
-    String titulo,
-    String valor,
-    Color cor,
-  ) {
+  Widget indicador(IconData icon, String titulo, String valor, Color cor) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF111111),
-            Color(0xFF1B1B1B),
-          ],
+          colors: [Color(0xFF111111), Color(0xFF1B1B1B)],
         ),
         border: Border.all(color: cor, width: 1.2),
         boxShadow: [
@@ -922,19 +892,12 @@ class DashboardScreen extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            size: 34,
-            color: cor,
-          ),
+          Icon(icon, size: 34, color: cor),
           SizedBox(height: 8),
           Text(
             titulo,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: Colors.white70, fontSize: 14),
           ),
           SizedBox(height: 6),
           Text(
@@ -959,12 +922,7 @@ class DashboardScreen extends StatelessWidget {
   ) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => screen,
-          ),
-        );
+        Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
       },
       child: Container(
         decoration: BoxDecoration(
@@ -972,10 +930,7 @@ class DashboardScreen extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF111111),
-              Color(0xFF1A1A1A),
-            ],
+            colors: [Color(0xFF111111), Color(0xFF1A1A1A)],
           ),
           border: Border.all(color: dourado, width: 1.4),
           boxShadow: [
@@ -990,11 +945,7 @@ class DashboardScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 42,
-              color: dourado,
-            ),
+            Icon(icon, size: 42, color: dourado),
             SizedBox(height: 10),
             Text(
               title,

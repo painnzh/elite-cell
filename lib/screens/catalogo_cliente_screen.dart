@@ -1,3 +1,4 @@
+
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,25 +8,23 @@ import 'package:url_launcher/url_launcher.dart';
 class CatalogoClienteScreen extends StatelessWidget {
   final String empresaId;
 
-CatalogoClienteScreen({
-  super.key,
-  required this.empresaId,
-});
+  CatalogoClienteScreen({
+    super.key,
+    required this.empresaId,
+  });
 
   final Color dourado = const Color(0xFFD4AF37);
 
-  final celulares =
+  final CollectionReference<Map<String, dynamic>> celulares =
       FirebaseFirestore.instance.collection('celulares_usados');
 
-  Future<void> enviarWhatsApp(
-    Map<String, dynamic> item,
-  ) async {
+  Future<void> enviarWhatsApp(Map<String, dynamic> item) async {
     final texto = Uri.encodeComponent(
       'Olá! Tenho interesse no aparelho:\n\n'
-      '${item['marca']} ${item['modelo']}\n'
-      'Capacidade: ${item['capacidade']}\n'
-      'Cor: ${item['cor']}\n'
-      'Preço: R\$ ${item['valor_venda']}',
+      '${item['marca'] ?? ''} ${item['modelo'] ?? ''}\n'
+      'Capacidade: ${item['capacidade'] ?? 'Não informada'}\n'
+      'Cor: ${item['cor'] ?? 'Não informada'}\n'
+      'Preço: R\$ ${item['valor_venda'] ?? 'Consulte'}',
     );
 
     final url = Uri.parse(
@@ -45,13 +44,21 @@ CatalogoClienteScreen({
         height: 220,
         width: double.infinity,
         fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return _fotoPadrao();
+        },
       );
     }
 
+    return _fotoPadrao();
+  }
+
+  Widget _fotoPadrao() {
     return Container(
       height: 220,
-      color: Colors.black,
-      child: Center(
+      width: double.infinity,
+      color: const Color(0xFF111111),
+      child: const Center(
         child: Icon(
           Icons.phone_android,
           color: Colors.white54,
@@ -65,53 +72,69 @@ CatalogoClienteScreen({
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-
       appBar: AppBar(
         backgroundColor: Colors.black,
         centerTitle: true,
+        iconTheme: IconThemeData(color: dourado),
         title: Text(
           'Catálogo Elite Cell',
-          style: TextStyle(color: dourado),
+          style: TextStyle(
+            color: dourado,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
-
-      body: StreamBuilder<QuerySnapshot>(
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: celulares
-    .where('empresaId', isEqualTo: empresaId)
-    .snapshots(),
+            .where('empresaId', isEqualTo: empresaId)
+            .snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return Center(
-              child: CircularProgressIndicator(
-                color: dourado,
+          if (snapshot.hasError) {
+            return const Center(
+              child: Text(
+                'Erro ao carregar o catálogo.',
+                style: TextStyle(color: Colors.redAccent),
               ),
             );
           }
 
-          
-final aparelhos = snapshot.data!.docs.where((doc) {
-  final item = doc.data() as Map<String, dynamic>;
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: CircularProgressIndicator(color: dourado),
+            );
+          }
 
-  return item['empresaId'] == empresaId &&
-      item['status'] == 'Disponível';
-}).toList();
+          final documentos = snapshot.data?.docs ?? [];
 
+          final aparelhos = documentos.where((doc) {
+            final item = doc.data();
+
+            return item['empresaId'] == empresaId &&
+                item['status'] == 'Disponível' &&
+                item['publicadoCatalogo'] == true;
+          }).toList();
 
           if (aparelhos.isEmpty) {
-            return Center(
-              child: Text(
-                'Nenhum aparelho disponível',
-                style: TextStyle(color: Colors.white),
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  'Nenhum aparelho disponível no catálogo.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 16,
+                  ),
+                ),
               ),
             );
           }
 
           return ListView.builder(
+            padding: const EdgeInsets.only(bottom: 16),
             itemCount: aparelhos.length,
             itemBuilder: (context, index) {
-              final doc = aparelhos[index];
-              final item =
-                  doc.data() as Map<String, dynamic>;
+              final item = aparelhos[index].data();
 
               return Card(
                 color: const Color(0xFF111111),
@@ -120,93 +143,62 @@ final aparelhos = snapshot.data!.docs.where((doc) {
                   borderRadius: BorderRadius.circular(20),
                   side: BorderSide(color: dourado),
                 ),
+                clipBehavior: Clip.antiAlias,
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ClipRRect(
-                      borderRadius:
-                          const BorderRadius.vertical(
-                        top: Radius.circular(20),
-                      ),
-                      child: foto(
-                        item['foto_path'] ?? '',
-                      ),
-                    ),
-
+                    foto(item['foto_path']?.toString() ?? ''),
                     Padding(
                       padding: const EdgeInsets.all(14),
                       child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '${item['marca']} ${item['modelo']}',
+                            '${item['marca'] ?? ''} ${item['modelo'] ?? ''}',
                             style: TextStyle(
                               color: dourado,
                               fontSize: 22,
-                              fontWeight:
-                                  FontWeight.bold,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-
-                          const SizedBox(height: 10),
-
-                          Text(
-                            '💾 ${item['capacidade']}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                            ),
-                          ),
-
-                          Text(
-                            '🎨 ${item['cor']}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                            ),
-                          ),
-
-                          Text(
-                            '🔋 ${item['bateria']}%',
-                            style: const TextStyle(
-                              color: Colors.white,
-                            ),
-                          ),
-
                           const SizedBox(height: 12),
-
+                          _detalhe(
+                            'Memória',
+                            item['capacidade']?.toString() ?? 'Não informada',
+                          ),
+                          _detalhe(
+                            'Cor',
+                            item['cor']?.toString() ?? 'Não informada',
+                          ),
+                          _detalhe(
+                            'Bateria',
+                            item['bateria'] == null
+                                ? 'Não informada'
+                                : '${item['bateria']}%',
+                          ),
+                          const SizedBox(height: 12),
                           Text(
-                            'R\$ ${item['valor_venda']}',
-                            style: TextStyle(
+                            'R\$ ${item['valor_venda'] ?? 'Consulte'}',
+                            style: const TextStyle(
                               color: Colors.greenAccent,
                               fontSize: 28,
-                              fontWeight:
-                                  FontWeight.bold,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-
-                          const SizedBox(height: 12),
-
+                          const SizedBox(height: 14),
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
-                              style:
-                                  ElevatedButton.styleFrom(
-                                backgroundColor:
-                                    Colors.green,
-                              ),
-                              onPressed: () =>
-                                  enviarWhatsApp(item),
-                              icon: const Icon(
-                                Icons.chat,
-                                color: Colors.white,
-                              ),
-                              label: const Text(
-                                'Tenho Interesse',
-                                style: TextStyle(
-                                  color: Colors.white,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
                                 ),
                               ),
+                              onPressed: () => enviarWhatsApp(item),
+                              icon: const Icon(Icons.chat),
+                              label: const Text('Tenho interesse'),
                             ),
                           ),
                         ],
@@ -218,6 +210,19 @@ final aparelhos = snapshot.data!.docs.where((doc) {
             },
           );
         },
+      ),
+    );
+  }
+
+  Widget _detalhe(String titulo, String valor) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(
+        '$titulo: $valor',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 15,
+        ),
       ),
     );
   }

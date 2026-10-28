@@ -1,0 +1,121 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function empresaAtiva() {
+      return autenticado()
+          && get(/databases/$(database)/documents/empresas/$(request.auth.uid)).data.uidDono
+              == request.auth.uid
+          && get(/databases/$(database)/documents/empresas/$(request.auth.uid)).data.status
+              == 'ativo';
+    }
+
+    function pertenceAoUsuario() {
+      return empresaAtiva() && resource.data.empresaId == request.auth.uid;
+    }
+
+    function novaEmpresaDoUsuario() {
+      return empresaAtiva() && request.resource.data.empresaId == request.auth.uid;
+    }
+
+    function mantemEmpresaDoUsuario() {
+      return empresaAtiva()
+          && resource.data.empresaId == request.auth.uid
+          && request.resource.data.empresaId == request.auth.uid;
+    }
+
+    function aparelhoPertenceAoUsuario(aparelhoId) {
+      return empresaAtiva()
+          && get(/databases/$(database)/documents/celulares_usados/$(aparelhoId)).data.empresaId
+              == request.auth.uid;
+    }
+
+    // Cada conta cria somente seu próprio cadastro, inicialmente pendente.
+    // Alterações de plano e de assinatura devem ser feitas pelo Admin SDK.
+    match /empresas/{empresaId} {
+      allow create: if autenticado()
+          && empresaId == request.auth.uid
+          && request.resource.data.uidDono == request.auth.uid
+          && request.resource.data.usuarioId == request.auth.uid
+          && request.resource.data.status == 'pendente'
+          && request.resource.data.statusAssinatura == 'pendente'
+          && request.resource.data.plano == 'mensal'
+          && request.resource.data.valorMensal == 19.90;
+      allow read: if autenticado() && resource.data.uidDono == request.auth.uid;
+      allow update, delete: if false;
+
+      match /configuracoes/{configuracaoId} {
+        allow read, write: if empresaAtiva() && empresaId == request.auth.uid;
+      }
+    }
+
+    match /clientes/{documentoId} {
+      allow read: if pertenceAoUsuario();
+      allow create: if novaEmpresaDoUsuario();
+      allow update: if mantemEmpresaDoUsuario();
+      allow delete: if pertenceAoUsuario();
+    }
+
+    match /ordens_servico/{documentoId} {
+      allow read: if pertenceAoUsuario();
+      allow create: if novaEmpresaDoUsuario();
+      allow update: if mantemEmpresaDoUsuario();
+      allow delete: if pertenceAoUsuario();
+    }
+
+    match /estoque/{documentoId} {
+      allow read: if pertenceAoUsuario();
+      allow create: if novaEmpresaDoUsuario();
+      allow update: if mantemEmpresaDoUsuario();
+      allow delete: if pertenceAoUsuario();
+    }
+
+    match /financeiro/{documentoId} {
+      allow read: if pertenceAoUsuario();
+      allow create: if novaEmpresaDoUsuario();
+      allow update: if mantemEmpresaDoUsuario();
+      allow delete: if pertenceAoUsuario();
+    }
+
+    match /garantias/{documentoId} {
+      allow read: if pertenceAoUsuario();
+      allow create: if novaEmpresaDoUsuario();
+      allow update: if mantemEmpresaDoUsuario();
+      allow delete: if pertenceAoUsuario();
+    }
+
+    match /tecnicos/{documentoId} {
+      allow read: if pertenceAoUsuario();
+      allow create: if novaEmpresaDoUsuario();
+      allow update: if mantemEmpresaDoUsuario();
+      allow delete: if pertenceAoUsuario();
+    }
+
+    match /celulares_usados/{aparelhoId} {
+      allow read: if pertenceAoUsuario();
+      allow create: if novaEmpresaDoUsuario();
+      allow update: if mantemEmpresaDoUsuario();
+      allow delete: if pertenceAoUsuario();
+
+      // Histórico técnico é adicionável, mas não pode ser reescrito ou apagado.
+      match /processo/{processoId} {
+        allow read: if aparelhoPertenceAoUsuario(aparelhoId);
+        allow create: if aparelhoPertenceAoUsuario(aparelhoId)
+            && request.resource.data.empresaId == request.auth.uid;
+        allow update, delete: if false;
+      }
+
+      // Termo assinado é uma evidência imutável no MVP.
+      match /termo_compra/{termoId} {
+        allow read: if aparelhoPertenceAoUsuario(aparelhoId);
+        allow create: if aparelhoPertenceAoUsuario(aparelhoId)
+            && request.resource.data.empresaId == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+  }
+}
