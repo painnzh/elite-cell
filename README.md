@@ -38,6 +38,9 @@ Aplicativo de gestão para assistências técnicas e lojas de celulares. O proje
 
 - Tema visual escuro com identidade dourada da Elite Cell.
 - Atualização reativa dos dados do Firestore por `StreamBuilder`.
+- Menu lateral premium com perfil, configurações, personalização, meta, suporte, consulta IMEI e saída segura.
+- Configurações isoladas por empresa em `empresas/{empresaId}/configuracoes/geral`.
+- Meta mensal e valores padrão de mão de obra aplicados apenas a novas ordens de serviço.
 - Pesquisa textual nas telas de usados e financeiro.
 - Gráficos financeiros de entradas, saídas e saldo.
 - Captura ou seleção de imagem para aparelhos usados.
@@ -81,6 +84,8 @@ lib/
     ├── login_screen.dart              # Autenticação
     ├── cadastro_empresa_screen.dart   # Cadastro de empresa
     ├── dashboard_screen.dart          # Navegação principal
+├── configuracoes_empresa_screen.dart # Perfil, meta, mão de obra e tema
+├── suporte_screen.dart            # Ajuda e contato de suporte
     ├── clientes_screen.dart           # Clientes
     ├── os_screen.dart                 # Ordens de serviço
     ├── estoque_screen.dart            # Estoque
@@ -97,6 +102,8 @@ test/                                  # Testes Flutter
 ```
 
 O aplicativo inicializa o Firebase em `lib/main.dart`. A autenticação entrega o UID do usuário ao dashboard como `empresaId`; os módulos em adequação recebem esse valor por construtor e o usam ao gravar e consultar documentos.
+
+As preferências de empresa ficam no documento `empresas/{empresaId}/configuracoes/geral`. A regra do Firestore limita leitura e escrita à empresa ativa, valida os campos aceitos e mantém o contador de OS separado no documento `contador_os`.
 
 ## Pré-requisitos
 
@@ -171,6 +178,8 @@ git status --short
 - A configuração Android está em `android/app/google-services.json`.
 
 Não inclua arquivos de credenciais, chaves privadas, tokens, bancos exportados ou dados reais de clientes em commits, issues, screenshots ou Pull Requests.
+
+As medidas operacionais para Cloudinary, App Check, chaves Android e LGPD estão documentadas em [`docs/SEGURANCA.md`](docs/SEGURANCA.md).
 
 ### Cloud Functions
 
