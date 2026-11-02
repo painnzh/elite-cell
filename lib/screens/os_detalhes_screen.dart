@@ -5,6 +5,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../services/ordem_servico_fluxo_service.dart';
+
 class OsDetalhesScreen extends StatefulWidget {
   final Map dados;
   final String empresaId;
@@ -21,6 +23,7 @@ class OsDetalhesScreen extends StatefulWidget {
 
 class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
   final Color dourado = Color(0xFFD4AF37);
+  final OrdemServicoFluxoService _fluxoService = OrdemServicoFluxoService();
 
   late TextEditingController clienteController;
   late TextEditingController telefoneController;
@@ -60,10 +63,6 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
     status = widget.dados['status'] ?? 'Em análise';
   }
 
-  int converterInteiro(dynamic valor) {
-    return int.tryParse(valor.toString()) ?? 0;
-  }
-
   Map<String, dynamic> get checklist {
     final dadosChecklist = widget.dados['checklist'];
 
@@ -83,64 +82,38 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
     final osRef = FirebaseFirestore.instance
         .collection('ordens_servico')
         .doc(id);
-    final peca = (widget.dados['peca_usada'] ?? '').toString();
-    final quantidade = converterInteiro(widget.dados['quantidade_peca']);
-    DocumentReference<Map<String, dynamic>>? estoqueRef;
 
-    if (status == 'Entregue' &&
-        widget.dados['estoque_baixado'] != true &&
-        peca.isNotEmpty &&
-        quantidade > 0) {
-      final resultado = await FirebaseFirestore.instance
-          .collection('estoque')
-          .where('empresaId', isEqualTo: widget.empresaId)
-          .where('nome', isEqualTo: peca)
-          .limit(1)
-          .get();
-      if (resultado.docs.isEmpty) {
-        throw StateError('A peça selecionada não foi encontrada no estoque.');
-      }
-      estoqueRef = resultado.docs.first.reference;
-    }
-
-    await FirebaseFirestore.instance.runTransaction((transacao) async {
-      final osAtual = await transacao.get(osRef);
-      if (!osAtual.exists || osAtual.data()?['empresaId'] != widget.empresaId) {
-        throw StateError('Você não tem acesso a esta OS.');
-      }
-      final jaBaixado = osAtual.data()?['estoque_baixado'] == true;
-      if (estoqueRef != null && !jaBaixado) {
-        final estoqueAtual = await transacao.get(estoqueRef);
-        final quantidadeAtual = converterInteiro(
-          estoqueAtual.data()?['quantidade'],
-        );
-        if (quantidadeAtual < quantidade) {
-          throw StateError('Estoque insuficiente para concluir esta OS.');
-        }
-        transacao.update(estoqueRef as DocumentReference<Object?>, {
-          'quantidade': (quantidadeAtual - quantidade).toString(),
-        });
-      }
-      transacao.update(osRef, {
-        'cliente': clienteController.text,
-        'telefone': telefoneController.text,
-        'imei': imeiController.text,
-        'marca': marcaController.text,
-        'modelo': modeloController.text,
-        'defeito': defeitoController.text,
-        'valor': valorController.text,
-        'observacao': observacaoController.text,
+    await _fluxoService.salvar(
+      osRef: osRef,
+      empresaId: widget.empresaId,
+      dadosAtuais: Map<String, dynamic>.from(widget.dados),
+      campos: {
+        'cliente': clienteController.text.trim(),
+        'telefone': telefoneController.text.trim(),
+        'imei': imeiController.text.trim(),
+        'marca': marcaController.text.trim(),
+        'modelo': modeloController.text.trim(),
+        'defeito': defeitoController.text.trim(),
+        'valor': valorController.text.trim(),
+        'observacao': observacaoController.text.trim(),
         'status': status,
-        'estoque_baixado': status == 'Entregue' ? true : jaBaixado,
-        'atualizado_em': DateTime.now(),
-      });
+      },
+    );
+
+    widget.dados.addAll({
+      'cliente': clienteController.text.trim(),
+      'telefone': telefoneController.text.trim(),
+      'imei': imeiController.text.trim(),
+      'marca': marcaController.text.trim(),
+      'modelo': modeloController.text.trim(),
+      'defeito': defeitoController.text.trim(),
+      'valor': valorController.text.trim(),
+      'observacao': observacaoController.text.trim(),
+      'status': status,
+      if (<String>{'Em reparo', 'Pronto', 'Entregue'}.contains(status))
+        'estoque_baixado': true,
+      if (status == 'Entregue') 'financeiro_lancado': true,
     });
-
-    widget.dados['status'] = status;
-
-    if (status == 'Entregue') {
-      widget.dados['estoque_baixado'] = true;
-    }
 
     setState(() {
       editando = false;
@@ -531,6 +504,109 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
     );
   }
 
+  Widget resumoOperacional() {
+    final valorCobrado = OrdemServicoFluxoService.valorNumerico(
+      widget.dados['valor'],
+    );
+    final custoPecas = OrdemServicoFluxoService.valorNumerico(
+      widget.dados['custo_pecas'],
+    );
+    final lucro = valorCobrado - custoPecas;
+    final financeiroLancado = widget.dados['financeiro_lancado'] == true;
+
+    return Container(
+      width: double.infinity,
+      margin: EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Color(0xFF111111),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: dourado, width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'RESUMO DA OS',
+            style: TextStyle(
+              color: dourado,
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 10),
+          Text(
+            'Valor cobrado: R\$ ${valorCobrado.toStringAsFixed(2)}',
+            style: TextStyle(color: Colors.white),
+          ),
+          Text(
+            'Custo de peças: R\$ ${custoPecas.toStringAsFixed(2)}',
+            style: TextStyle(color: Colors.white70),
+          ),
+          Text(
+            'Margem bruta: R\$ ${lucro.toStringAsFixed(2)}',
+            style: TextStyle(
+              color: lucro >= 0 ? Colors.greenAccent : Colors.redAccent,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            financeiroLancado
+                ? 'Financeiro: lançamento de entrada criado.'
+                : 'Financeiro: será lançado automaticamente na entrega.',
+            style: TextStyle(
+              color: financeiroLancado ? Colors.greenAccent : Colors.white60,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget historicoStatus() {
+    final registros = (widget.dados['historico_status'] as List? ?? const [])
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList()
+        .reversed
+        .toList();
+    if (registros.isEmpty) return SizedBox();
+
+    return Container(
+      width: double.infinity,
+      margin: EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Color(0xFF111111),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: dourado),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'HISTÓRICO DE STATUS',
+            style: TextStyle(color: dourado, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 6),
+          ...registros.map((registro) {
+            final de = (registro['de'] ?? '').toString();
+            final para = (registro['para'] ?? '').toString();
+            return Padding(
+              padding: EdgeInsets.symmetric(vertical: 4),
+              child: Text(
+                de.isEmpty ? 'Criada como: $para' : '$de  →  $para',
+                style: TextStyle(color: Colors.white70),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
   Widget itemChecklistTela(String titulo, String chave) {
     final valor = checklist[chave] == true;
 
@@ -788,6 +864,8 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
             SizedBox(height: 16),
             galeriaFotos(),
             checklistTela(),
+            resumoOperacional(),
+            historicoStatus(),
             infoCard('Peça utilizada', pecaUsada),
             infoCard('Quantidade da peça', quantidadePeca),
             campo('Cliente', clienteController),
@@ -804,18 +882,9 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
               dropdownColor: Color(0xFF111111),
               style: TextStyle(color: Colors.white),
               decoration: decoracaoCampo('Status'),
-              items:
-                  [
-                    'Em análise',
-                    'Aprovado',
-                    'Aguardando peça',
-                    'Em reparo',
-                    'Pronto',
-                    'Entregue',
-                    'Cancelado',
-                  ].map((item) {
-                    return DropdownMenuItem(value: item, child: Text(item));
-                  }).toList(),
+              items: OrdemServicoFluxoService.etapas.map((item) {
+                return DropdownMenuItem(value: item, child: Text(item));
+              }).toList(),
               onChanged: editando
                   ? (valor) {
                       if (valor != null) {

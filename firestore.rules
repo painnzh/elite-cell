@@ -89,6 +89,13 @@ service cloud.firestore {
               && request.resource.data.tema in ['claro', 'escuro']);
     }
 
+    // Consultas collectionGroup('membros') exigem uma regra com coringa
+    // recursivo. Cada conta só pode localizar o seu próprio convite.
+    match /{caminho=**}/membros/{email} {
+      allow list: if autenticado()
+          && resource.data.email == request.auth.token.email;
+    }
+
     // Cada conta cria somente seu próprio cadastro, inicialmente pendente.
     // Alterações de plano e de assinatura devem ser feitas pelo Admin SDK.
     match /empresas/{empresaId} {
@@ -112,7 +119,7 @@ service cloud.firestore {
 
       match /membros/{email} {
         allow get, list: if donoDaEmpresa(empresaId)
-            || (autenticado() && resource.data.email == request.auth.token.email);
+            || (autenticado() && email == request.auth.token.email);
         allow create: if donoDaEmpresa(empresaId)
             && request.resource.data.keys().hasOnly(['email', 'papel', 'status', 'uid', 'criadoEm'])
             && request.resource.data.email == email

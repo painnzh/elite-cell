@@ -19,8 +19,8 @@ class AcessoEmpresaService {
   final FirebaseAuth _auth;
 
   AcessoEmpresaService({FirebaseFirestore? db, FirebaseAuth? auth})
-      : _db = db ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+    : _db = db ?? FirebaseFirestore.instance,
+      _auth = auth ?? FirebaseAuth.instance;
 
   String _emailAtual() {
     final email = _auth.currentUser?.email?.trim().toLowerCase();
@@ -37,14 +37,13 @@ class AcessoEmpresaService {
     final empresaDona = await _db
         .collection('empresas')
         .where('uidDono', isEqualTo: usuario.uid)
+        // A regra do Firestore também exige que a empresa esteja ativa.
+        // O filtro precisa fazer parte da consulta para ela ser autorizada.
+        .where('status', isEqualTo: 'ativo')
         .limit(1)
         .get();
     if (empresaDona.docs.isNotEmpty) {
-      final dados = empresaDona.docs.first.data();
-      if (dados['status']?.toString().toLowerCase() == 'ativo') {
-        return AcessoEmpresa(empresaId: empresaDona.docs.first.id, papel: 'dono');
-      }
-      return null;
+      return AcessoEmpresa(empresaId: empresaDona.docs.first.id, papel: 'dono');
     }
 
     final convite = await _db
@@ -63,7 +62,9 @@ class AcessoEmpresaService {
         'ativadoEm': FieldValue.serverTimestamp(),
       });
     }
-    if (dados['status'] != 'ativo' && dados['status'] != 'convidado') return null;
+    if (dados['status'] != 'ativo' && dados['status'] != 'convidado') {
+      return null;
+    }
     return AcessoEmpresa(
       empresaId: documento.reference.parent.parent!.id,
       papel: dados['papel']?.toString() ?? 'tecnico',
@@ -93,11 +94,11 @@ class AcessoEmpresaService {
         .collection('membros')
         .doc(emailNormalizado)
         .set({
-      'email': emailNormalizado,
-      'papel': papel,
-      'status': 'convidado',
-      'uid': null,
-      'criadoEm': FieldValue.serverTimestamp(),
-    });
+          'email': emailNormalizado,
+          'papel': papel,
+          'status': 'convidado',
+          'uid': null,
+          'criadoEm': FieldValue.serverTimestamp(),
+        });
   }
 }

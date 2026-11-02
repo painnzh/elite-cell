@@ -9,6 +9,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import 'os_detalhes_screen.dart';
 import '../services/configuracao_empresa_service.dart';
+import '../services/ordem_servico_fluxo_service.dart';
 
 class OsScreen extends StatefulWidget {
   final String empresaId;
@@ -36,8 +37,9 @@ class _OsScreenState extends State<OsScreen> {
   final descontoController = TextEditingController(text: '0');
   final observacaoController = TextEditingController();
 
-  String statusSelecionado = 'Em análise';
+  String statusSelecionado = 'Aguardando aprovação';
   String tipoServicoSelecionado = 'Outros serviços';
+  String formaPagamentoSelecionada = 'Pix';
   String? tecnicoSelecionado;
   double maoDeObraPadrao = 70;
   Map<String, dynamic> valoresServico = {};
@@ -180,6 +182,16 @@ class _OsScreenState extends State<OsScreen> {
         throw Exception('Usuário não autenticado.');
       }
 
+      final quantidadePeca =
+          int.tryParse(quantidadePecaController.text.trim()) ?? 0;
+      final custoUnitario = OrdemServicoFluxoService.valorNumerico(
+        valorPecaController.text,
+      );
+      final valorCobrado = OrdemServicoFluxoService.valorNumerico(
+        valorController.text,
+      );
+      final custoPecas = custoUnitario * quantidadePeca;
+
       await os.add({
         'empresaId': widget.empresaId,
         'uidEmpresa': usuario.uid,
@@ -194,13 +206,21 @@ class _OsScreenState extends State<OsScreen> {
         'valor_peca': valorPecaController.text,
         'mao_de_obra': maoDeObraDoServico(),
         'tipo_servico': tipoServicoSelecionado,
+        'forma_pagamento': formaPagamentoSelecionada,
         'desconto_percentual': descontoController.text,
         'observacao': observacaoController.text,
         'status': statusSelecionado,
         'tecnico': tecnicoSelecionado ?? '',
         'peca_usada': pecaSelecionada ?? '',
-        'quantidade_peca': int.tryParse(quantidadePecaController.text) ?? 0,
+        'quantidade_peca': quantidadePeca,
         'estoque_baixado': false,
+        'financeiro_lancado': false,
+        'valor_cobrado': valorCobrado,
+        'custo_pecas': custoPecas,
+        'lucro_bruto_estimado': valorCobrado - custoPecas,
+        'historico_status': [
+          {'de': '', 'para': statusSelecionado, 'em': Timestamp.now()},
+        ],
         'checklist': {
           'liga': chkLiga,
           'touch': chkTouch,
@@ -263,7 +283,8 @@ class _OsScreenState extends State<OsScreen> {
 
         tecnicoSelecionado = null;
         pecaSelecionada = null;
-        statusSelecionado = 'Em análise';
+        statusSelecionado = 'Aguardando aprovação';
+        formaPagamentoSelecionada = 'Pix';
         salvando = false;
       });
 
@@ -661,6 +682,34 @@ class _OsScreenState extends State<OsScreen> {
 
                     campoFormulario(valorController, 'Valor da OS'),
 
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: DropdownButtonFormField<String>(
+                        value: formaPagamentoSelecionada,
+                        dropdownColor: Color(0xFF111111),
+                        style: TextStyle(color: Colors.white),
+                        decoration: decoracaoCampo('Forma de pagamento'),
+                        items:
+                            const [
+                                  'Pix',
+                                  'Dinheiro',
+                                  'Cartão Débito',
+                                  'Cartão Crédito',
+                                  'A combinar',
+                                ]
+                                .map(
+                                  (forma) => DropdownMenuItem(
+                                    value: forma,
+                                    child: Text(forma),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged: (valor) => setModalState(
+                          () => formaPagamentoSelecionada = valor!,
+                        ),
+                      ),
+                    ),
+
                     campoFormulario(observacaoController, 'Observações'),
 
                     SizedBox(height: 12),
@@ -742,21 +791,12 @@ class _OsScreenState extends State<OsScreen> {
                       dropdownColor: Color(0xFF111111),
                       style: TextStyle(color: Colors.white),
                       decoration: decoracaoCampo('Status'),
-                      items:
-                          [
-                            'Em análise',
-                            'Aprovado',
-                            'Aguardando peça',
-                            'Em reparo',
-                            'Pronto',
-                            'Entregue',
-                            'Cancelado',
-                          ].map((status) {
-                            return DropdownMenuItem(
-                              value: status,
-                              child: Text(status),
-                            );
-                          }).toList(),
+                      items: OrdemServicoFluxoService.etapas.map((status) {
+                        return DropdownMenuItem(
+                          value: status,
+                          child: Text(status),
+                        );
+                      }).toList(),
                       onChanged: (valor) {
                         setModalState(() {
                           statusSelecionado = valor!;
@@ -782,6 +822,8 @@ class _OsScreenState extends State<OsScreen> {
                             valorPecaController.clear();
                             descontoController.text = '0';
                             tipoServicoSelecionado = 'Outros serviços';
+                            formaPagamentoSelecionada = 'Pix';
+                            statusSelecionado = 'Aguardando aprovação';
                           });
                           Navigator.pop(context);
                         },
