@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'os_detalhes_screen.dart';
+import '../services/configuracao_empresa_service.dart';
 
 class OsScreen extends StatefulWidget {
   final String empresaId;
@@ -36,7 +37,10 @@ class _OsScreenState extends State<OsScreen> {
   final observacaoController = TextEditingController();
 
   String statusSelecionado = 'Em análise';
+  String tipoServicoSelecionado = 'Outros serviços';
   String? tecnicoSelecionado;
+  double maoDeObraPadrao = 70;
+  Map<String, dynamic> valoresServico = {};
 
   String? pecaSelecionada;
   final quantidadePecaController = TextEditingController();
@@ -65,8 +69,22 @@ class _OsScreenState extends State<OsScreen> {
 
   final os = FirebaseFirestore.instance.collection('ordens_servico');
 
+  double maoDeObraDoServico() {
+    final chave = tipoServicoSelecionado == 'Troca de tela'
+        ? 'trocaTela'
+        : tipoServicoSelecionado == 'Troca de conector'
+        ? 'trocaConector'
+        : '';
+    final configurado = double.tryParse(
+      (valoresServico[chave] ?? '').toString(),
+    );
+    return configurado != null && configurado > 0
+        ? configurado
+        : maoDeObraPadrao;
+  }
+
   double calcularOrcamento(double valorPeca, double descontoPercentual) {
-    double valor = (valorPeca * 2.05) + 70;
+    double valor = (valorPeca * 2.05) + maoDeObraDoServico();
     double desconto = valor * (descontoPercentual / 100);
     double valorFinal = valor - desconto;
 
@@ -174,6 +192,8 @@ class _OsScreenState extends State<OsScreen> {
         'defeito': defeitoController.text,
         'valor': valorController.text,
         'valor_peca': valorPecaController.text,
+        'mao_de_obra': maoDeObraDoServico(),
+        'tipo_servico': tipoServicoSelecionado,
         'desconto_percentual': descontoController.text,
         'observacao': observacaoController.text,
         'status': statusSelecionado,
@@ -570,7 +590,20 @@ class _OsScreenState extends State<OsScreen> {
     );
   }
 
-  void abrirFormulario() {
+  Future<void> abrirFormulario() async {
+    final configuracao = await ConfiguracaoEmpresaService(
+      widget.empresaId,
+    ).carregar();
+    if (!mounted) return;
+    final servicos = Map<String, dynamic>.from(
+      configuracao['valoresServico'] ?? {},
+    );
+    setState(() {
+      maoDeObraPadrao =
+          double.tryParse((configuracao['maoDeObraPadrao'] ?? 70).toString()) ??
+          70;
+      valoresServico = servicos;
+    });
     showDialog(
       context: context,
       builder: (_) {
@@ -590,6 +623,36 @@ class _OsScreenState extends State<OsScreen> {
                     campoFormulario(modeloController, 'Modelo'),
                     campoFormulario(defeitoController, 'Defeito'),
 
+                    DropdownButtonFormField<String>(
+                      value: tipoServicoSelecionado,
+                      dropdownColor: Color(0xFF111111),
+                      style: TextStyle(color: Colors.white),
+                      decoration: decoracaoCampo('Tipo de serviço'),
+                      items:
+                          const [
+                                'Outros serviços',
+                                'Troca de tela',
+                                'Troca de conector',
+                              ]
+                              .map(
+                                (tipo) => DropdownMenuItem(
+                                  value: tipo,
+                                  child: Text(tipo),
+                                ),
+                              )
+                              .toList(),
+                      onChanged: (valor) =>
+                          setModalState(() => tipoServicoSelecionado = valor!),
+                    ),
+
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        'Mão de obra aplicada: R\$ ${maoDeObraDoServico().toStringAsFixed(2)}',
+                        style: TextStyle(color: dourado),
+                      ),
+                    ),
+
                     campoFormulario(valorPecaController, 'Valor da peça'),
 
                     campoFormulario(descontoController, 'Desconto (%)'),
@@ -605,7 +668,7 @@ class _OsScreenState extends State<OsScreen> {
                     tecnicoDropdown(setModalState),
 
                     StreamBuilder<QuerySnapshot>(
-		      stream: FirebaseFirestore.instance
+                      stream: FirebaseFirestore.instance
                           .collection('estoque')
                           .where('empresaId', isEqualTo: widget.empresaId)
                           .orderBy('nome')
@@ -718,6 +781,7 @@ class _OsScreenState extends State<OsScreen> {
                             quantidadePecaController.clear();
                             valorPecaController.clear();
                             descontoController.text = '0';
+                            tipoServicoSelecionado = 'Outros serviços';
                           });
                           Navigator.pop(context);
                         },

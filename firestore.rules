@@ -34,6 +34,44 @@ service cloud.firestore {
               == request.auth.uid;
     }
 
+    function configuracaoValida(configuracaoId) {
+      return (configuracaoId == 'contador_os'
+              && request.resource.data.keys().hasOnly(['ultimo_numero'])
+              && request.resource.data.ultimo_numero is int)
+          || (configuracaoId == 'geral'
+              && request.resource.data.keys().hasOnly([
+                'nomeEmpresa',
+                'logoUrl',
+                'telefone',
+                'endereco',
+                'informacoesComerciais',
+                'metaMensal',
+                'maoDeObraPadrao',
+                'valoresServico',
+                'tema',
+                'atualizadoEm'
+              ])
+              && request.resource.data.nomeEmpresa is string
+              && request.resource.data.logoUrl is string
+              && request.resource.data.telefone is string
+              && request.resource.data.endereco is string
+              && request.resource.data.informacoesComerciais is string
+              && request.resource.data.metaMensal is number
+              && request.resource.data.metaMensal >= 0
+              && request.resource.data.maoDeObraPadrao is number
+              && request.resource.data.maoDeObraPadrao >= 0
+              && request.resource.data.valoresServico is map
+              && request.resource.data.valoresServico.keys().hasOnly([
+                'trocaTela',
+                'trocaConector'
+              ])
+              && request.resource.data.valoresServico.trocaTela is number
+              && request.resource.data.valoresServico.trocaTela >= 0
+              && request.resource.data.valoresServico.trocaConector is number
+              && request.resource.data.valoresServico.trocaConector >= 0
+              && request.resource.data.tema in ['claro', 'escuro']);
+    }
+
     // Cada conta cria somente seu próprio cadastro, inicialmente pendente.
     // Alterações de plano e de assinatura devem ser feitas pelo Admin SDK.
     match /empresas/{empresaId} {
@@ -49,7 +87,11 @@ service cloud.firestore {
       allow update, delete: if false;
 
       match /configuracoes/{configuracaoId} {
-        allow read, write: if empresaAtiva() && empresaId == request.auth.uid;
+        allow read: if empresaAtiva() && empresaId == request.auth.uid;
+        allow create, update: if empresaAtiva()
+            && empresaId == request.auth.uid
+            && configuracaoValida(configuracaoId);
+        allow delete: if false;
       }
     }
 

@@ -78,61 +78,63 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
     return valor == true ? '✅' : '❌';
   }
 
-  Future<void> baixarEstoqueAutomaticamente() async {
-    if (status != 'Entregue') return;
-    if (widget.dados['estoque_baixado'] == true) return;
-
-    final String peca = (widget.dados['peca_usada'] ?? '').toString();
-    final int quantidadeUsada = converterInteiro(
-      widget.dados['quantidade_peca'],
-    );
-
-    if (peca.isEmpty || quantidadeUsada <= 0) return;
-
-    final estoqueBusca = await FirebaseFirestore.instance
-        .collection('estoque')
-        .where('empresaId', isEqualTo: widget.empresaId)
-        .where('nome', isEqualTo: peca)
-        .limit(1)
-        .get();
-
-    if (estoqueBusca.docs.isEmpty) return;
-
-    final docEstoque = estoqueBusca.docs.first;
-    final dadosEstoque = docEstoque.data();
-
-    final int estoqueAtual = converterInteiro(dadosEstoque['quantidade']);
-    final int novoEstoque = estoqueAtual - quantidadeUsada;
-
-    await FirebaseFirestore.instance
-        .collection('estoque')
-        .doc(docEstoque.id)
-        .update({'quantidade': novoEstoque < 0 ? '0' : novoEstoque.toString()});
-  }
-
   Future<void> salvarAlteracoes() async {
     final id = widget.dados['id'];
-
-    await baixarEstoqueAutomaticamente();
-
-    await FirebaseFirestore.instance
+    final osRef = FirebaseFirestore.instance
         .collection('ordens_servico')
-        .doc(id)
-        .update({
-          'cliente': clienteController.text,
-          'telefone': telefoneController.text,
-          'imei': imeiController.text,
-          'marca': marcaController.text,
-          'modelo': modeloController.text,
-          'defeito': defeitoController.text,
-          'valor': valorController.text,
-          'observacao': observacaoController.text,
-          'status': status,
-          'estoque_baixado': status == 'Entregue'
-              ? true
-              : widget.dados['estoque_baixado'] ?? false,
-          'atualizado_em': DateTime.now(),
+        .doc(id);
+    final peca = (widget.dados['peca_usada'] ?? '').toString();
+    final quantidade = converterInteiro(widget.dados['quantidade_peca']);
+    DocumentReference<Map<String, dynamic>>? estoqueRef;
+
+    if (status == 'Entregue' &&
+        widget.dados['estoque_baixado'] != true &&
+        peca.isNotEmpty &&
+        quantidade > 0) {
+      final resultado = await FirebaseFirestore.instance
+          .collection('estoque')
+          .where('empresaId', isEqualTo: widget.empresaId)
+          .where('nome', isEqualTo: peca)
+          .limit(1)
+          .get();
+      if (resultado.docs.isEmpty) {
+        throw StateError('A peça selecionada não foi encontrada no estoque.');
+      }
+      estoqueRef = resultado.docs.first.reference;
+    }
+
+    await FirebaseFirestore.instance.runTransaction((transacao) async {
+      final osAtual = await transacao.get(osRef);
+      if (!osAtual.exists || osAtual.data()?['empresaId'] != widget.empresaId) {
+        throw StateError('Você não tem acesso a esta OS.');
+      }
+      final jaBaixado = osAtual.data()?['estoque_baixado'] == true;
+      if (estoqueRef != null && !jaBaixado) {
+        final estoqueAtual = await transacao.get(estoqueRef);
+        final quantidadeAtual = converterInteiro(
+          estoqueAtual.data()?['quantidade'],
+        );
+        if (quantidadeAtual < quantidade) {
+          throw StateError('Estoque insuficiente para concluir esta OS.');
+        }
+        transacao.update(estoqueRef, {
+          'quantidade': (quantidadeAtual - quantidade).toString(),
         });
+      }
+      transacao.update(osRef, {
+        'cliente': clienteController.text,
+        'telefone': telefoneController.text,
+        'imei': imeiController.text,
+        'marca': marcaController.text,
+        'modelo': modeloController.text,
+        'defeito': defeitoController.text,
+        'valor': valorController.text,
+        'observacao': observacaoController.text,
+        'status': status,
+        'estoque_baixado': status == 'Entregue' ? true : jaBaixado,
+        'atualizado_em': DateTime.now(),
+      });
+    });
 
     widget.dados['status'] = status;
 

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import 'dashboard_screen.dart';
 import 'cadastro_empresa_screen.dart';
+import '../services/configuracao_empresa_service.dart';
+import '../theme/tema_empresa_controller.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -63,6 +65,11 @@ class _LoginScreenState extends State<LoginScreen> {
         );
         return;
       }
+
+      final configuracao = await ConfiguracaoEmpresaService(usuario.uid).carregar();
+      temaEmpresaController.value = temaDoValor(configuracao['tema']);
+
+      if (!mounted) return;
 
 Navigator.pushReplacement(
   context,

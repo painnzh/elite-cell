@@ -11,6 +11,7 @@ import 'financeiro_screen.dart';
 import 'os_screen.dart';
 import 'celulares_usados_screen.dart';
 import 'tecnicos_screen.dart';
+import '../widgets/menu_lateral_premium.dart';
 
 class DashboardScreen extends StatelessWidget {
   final String empresaId;
@@ -88,8 +89,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget metaEmpresaCard(double faturamentoMes) {
-    final double metaEmpresa = 5000;
+  Widget metaEmpresaCard(double faturamentoMes, double metaEmpresa) {
     final double percentual = metaEmpresa == 0
         ? 0
         : faturamentoMes / metaEmpresa;
@@ -472,13 +472,11 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
-
       appBar: AppBar(
-        backgroundColor: Colors.black,
         centerTitle: true,
         title: Image.asset('assets/images/elite_cell_logo.png', height: 55),
       ),
+      drawer: MenuLateralPremium(empresaId: empresaId),
 
       body: StreamBuilder<QuerySnapshot>(
         stream: os.where('empresaId', isEqualTo: empresaId).snapshots(),
@@ -626,7 +624,28 @@ class DashboardScreen extends StatelessWidget {
 
                                     SizedBox(height: 22),
 
-                                    metaEmpresaCard(faturamentoMes),
+                                    StreamBuilder<
+                                      DocumentSnapshot<Map<String, dynamic>>
+                                    >(
+                                      stream: FirebaseFirestore.instance
+                                          .collection('empresas')
+                                          .doc(empresaId)
+                                          .collection('configuracoes')
+                                          .doc('geral')
+                                          .snapshots(),
+                                      builder: (context, configuracaoSnapshot) {
+                                        final dados =
+                                            configuracaoSnapshot.data?.data() ??
+                                            {};
+                                        final meta = converterValor(
+                                          dados['metaMensal'] ?? 5000,
+                                        );
+                                        return metaEmpresaCard(
+                                          faturamentoMes,
+                                          meta <= 0 ? 5000 : meta,
+                                        );
+                                      },
+                                    ),
 
                                     SizedBox(height: 22),
 
