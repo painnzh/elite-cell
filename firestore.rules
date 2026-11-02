@@ -6,32 +6,49 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function empresaAtiva() {
+    function donoDaEmpresa(empresaId) {
       return autenticado()
-          && get(/databases/$(database)/documents/empresas/$(request.auth.uid)).data.uidDono
+          && get(/databases/$(database)/documents/empresas/$(empresaId)).data.uidDono
               == request.auth.uid
-          && get(/databases/$(database)/documents/empresas/$(request.auth.uid)).data.status
+          && get(/databases/$(database)/documents/empresas/$(empresaId)).data.status
               == 'ativo';
     }
 
+    function membroDaEmpresa(empresaId) {
+      return autenticado()
+          && request.auth.token.email != null
+          && get(/databases/$(database)/documents/empresas/$(empresaId)/membros/$(request.auth.token.email)).data.status == 'ativo'
+          && get(/databases/$(database)/documents/empresas/$(empresaId)/membros/$(request.auth.token.email)).data.uid == request.auth.uid;
+    }
+
+    function empresaAtiva(empresaId) {
+      return donoDaEmpresa(empresaId) || membroDaEmpresa(empresaId);
+    }
+
+    function podeGerenciarEmpresa(empresaId) {
+      return donoDaEmpresa(empresaId)
+          || (membroDaEmpresa(empresaId)
+              && get(/databases/$(database)/documents/empresas/$(empresaId)/membros/$(request.auth.token.email)).data.papel == 'administrador');
+    }
+
     function pertenceAoUsuario() {
-      return empresaAtiva() && resource.data.empresaId == request.auth.uid;
+      return autenticado() && empresaAtiva(resource.data.empresaId);
     }
 
     function novaEmpresaDoUsuario() {
-      return empresaAtiva() && request.resource.data.empresaId == request.auth.uid;
+      return autenticado() && empresaAtiva(request.resource.data.empresaId);
     }
 
     function mantemEmpresaDoUsuario() {
-      return empresaAtiva()
-          && resource.data.empresaId == request.auth.uid
-          && request.resource.data.empresaId == request.auth.uid;
+      return autenticado()
+          && empresaAtiva(resource.data.empresaId)
+          && request.resource.data.empresaId == resource.data.empresaId;
     }
 
     function aparelhoPertenceAoUsuario(aparelhoId) {
-      return empresaAtiva()
+      return empresaAtiva(get(/databases/$(database)/documents/celulares_usados/$(aparelhoId)).data.empresaId)
           && get(/databases/$(database)/documents/celulares_usados/$(aparelhoId)).data.empresaId
-              == request.auth.uid;
+              != null;
     }
 
     function configuracaoValida(configuracaoId) {
@@ -83,15 +100,35 @@ service cloud.firestore {
           && request.resource.data.statusAssinatura == 'pendente'
           && request.resource.data.plano == 'mensal'
           && request.resource.data.valorMensal == 19.90;
-      allow read: if autenticado() && resource.data.uidDono == request.auth.uid;
+      allow read: if autenticado() && (resource.data.uidDono == request.auth.uid || membroDaEmpresa(empresaId));
       allow update, delete: if false;
 
       match /configuracoes/{configuracaoId} {
-        allow read: if empresaAtiva() && empresaId == request.auth.uid;
-        allow create, update: if empresaAtiva()
-            && empresaId == request.auth.uid
+        allow read: if empresaAtiva(empresaId);
+        allow create, update: if podeGerenciarEmpresa(empresaId)
             && configuracaoValida(configuracaoId);
         allow delete: if false;
+      }
+
+      match /membros/{email} {
+        allow get, list: if donoDaEmpresa(empresaId)
+            || (autenticado() && resource.data.email == request.auth.token.email);
+        allow create: if donoDaEmpresa(empresaId)
+            && request.resource.data.keys().hasOnly(['email', 'papel', 'status', 'uid', 'criadoEm'])
+            && request.resource.data.email == email
+            && request.resource.data.papel in ['administrador', 'gerente', 'tecnico', 'caixa']
+            && request.resource.data.status == 'convidado'
+            && request.resource.data.uid == null;
+        allow update: if donoDaEmpresa(empresaId)
+            || (autenticado()
+                && resource.data.email == request.auth.token.email
+                && resource.data.status == 'convidado'
+                && request.resource.data.email == resource.data.email
+                && request.resource.data.papel == resource.data.papel
+                && request.resource.data.status == 'ativo'
+                && request.resource.data.uid == request.auth.uid
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'uid', 'ativadoEm']));
+        allow delete: if donoDaEmpresa(empresaId);
       }
     }
 
@@ -147,7 +184,7 @@ service cloud.firestore {
       match /processo/{processoId} {
         allow read: if aparelhoPertenceAoUsuario(aparelhoId);
         allow create: if aparelhoPertenceAoUsuario(aparelhoId)
-            && request.resource.data.empresaId == request.auth.uid;
+            && request.resource.data.empresaId == get(/databases/$(database)/documents/celulares_usados/$(aparelhoId)).data.empresaId;
         allow update, delete: if false;
       }
 
@@ -155,7 +192,7 @@ service cloud.firestore {
       match /termo_compra/{termoId} {
         allow read: if aparelhoPertenceAoUsuario(aparelhoId);
         allow create: if aparelhoPertenceAoUsuario(aparelhoId)
-            && request.resource.data.empresaId == request.auth.uid;
+            && request.resource.data.empresaId == get(/databases/$(database)/documents/celulares_usados/$(aparelhoId)).data.empresaId;
         allow update, delete: if false;
       }
     }
