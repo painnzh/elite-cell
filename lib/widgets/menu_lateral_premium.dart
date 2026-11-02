@@ -6,11 +6,13 @@ import 'package:url_launcher/url_launcher.dart';
 import '../screens/configuracoes_empresa_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/suporte_screen.dart';
+import '../screens/equipe_screen.dart';
 
 class MenuLateralPremium extends StatelessWidget {
-  const MenuLateralPremium({super.key, required this.empresaId});
+  const MenuLateralPremium({super.key, required this.empresaId, this.papel = 'dono'});
 
   final String empresaId;
+  final String papel;
 
   Future<void> _abrirImei() async {
     await launchUrl(
@@ -97,39 +99,47 @@ class MenuLateralPremium extends StatelessWidget {
                   ],
                 ),
               ),
-              _item(
+              if (papel == 'dono') _item(
+                context,
+                Icons.group_outlined,
+                'Equipe e acessos',
+                EquipeScreen(empresaId: empresaId),
+              ),
+              if (papel == 'dono' || papel == 'administrador') _item(
                 context,
                 Icons.business,
                 'Perfil da empresa',
                 ConfiguracoesEmpresaScreen(empresaId: empresaId),
               ),
-              _item(
-                context,
-                Icons.settings_outlined,
-                'Configurações',
-                ConfiguracoesEmpresaScreen(
-                  empresaId: empresaId,
-                  secaoInicial: SecaoConfiguracao.geral,
+              if (papel == 'dono' || papel == 'administrador') ...[
+                _item(
+                  context,
+                  Icons.settings_outlined,
+                  'Configurações',
+                  ConfiguracoesEmpresaScreen(
+                    empresaId: empresaId,
+                    secaoInicial: SecaoConfiguracao.geral,
+                  ),
                 ),
-              ),
-              _item(
-                context,
-                Icons.palette_outlined,
-                'Personalização',
-                ConfiguracoesEmpresaScreen(
-                  empresaId: empresaId,
-                  secaoInicial: SecaoConfiguracao.personalizacao,
+                _item(
+                  context,
+                  Icons.palette_outlined,
+                  'Personalização',
+                  ConfiguracoesEmpresaScreen(
+                    empresaId: empresaId,
+                    secaoInicial: SecaoConfiguracao.personalizacao,
+                  ),
                 ),
-              ),
-              _item(
-                context,
-                Icons.flag_outlined,
-                'Meta e valores',
-                ConfiguracoesEmpresaScreen(
-                  empresaId: empresaId,
-                  secaoInicial: SecaoConfiguracao.meta,
+                _item(
+                  context,
+                  Icons.flag_outlined,
+                  'Meta e valores',
+                  ConfiguracoesEmpresaScreen(
+                    empresaId: empresaId,
+                    secaoInicial: SecaoConfiguracao.meta,
+                  ),
                 ),
-              ),
+              ],
               const Divider(),
               ListTile(
                 leading: const Icon(Icons.support_agent_outlined),

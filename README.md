@@ -41,6 +41,8 @@ Aplicativo de gestão para assistências técnicas e lojas de celulares. O proje
 - Menu lateral premium com perfil, configurações, personalização, meta, suporte, consulta IMEI e saída segura.
 - Configurações isoladas por empresa em `empresas/{empresaId}/configuracoes/geral`.
 - Meta mensal e valores padrão de mão de obra aplicados apenas a novas ordens de serviço.
+- Gestão de equipe: o dono convida colaboradores por e-mail e define os perfis administrador, gerente, técnico ou caixa.
+- Ativação autônoma de acesso: o colaborador cria sua conta com o e-mail convidado e passa a operar somente os dados da empresa associada.
 - Pesquisa textual nas telas de usados e financeiro.
 - Gráficos financeiros de entradas, saídas e saldo.
 - Captura ou seleção de imagem para aparelhos usados.
@@ -202,7 +204,15 @@ npm run deploy
 
 ## Multiempresa e segurança
 
-O sistema está em migração para atender diversas assistências técnicas. O identificador de empresa é o UID do usuário autenticado, propagado pelo dashboard como `empresaId`.
+O sistema está em migração para atender diversas assistências técnicas. O identificador de empresa é propagado pelo dashboard como `empresaId`. O dono é identificado pelo UID gravado no cadastro da empresa; colaboradores ativos são associados pelo convite em `empresas/{empresaId}/membros/{email}`.
+
+### Perfis de acesso
+
+- **Dono:** administra a empresa, configurações e convites da equipe.
+- **Administrador:** acessa as configurações operacionais da empresa.
+- **Gerente, técnico e caixa:** entram somente após convite e recebem o escopo de dados da empresa pelas regras do Firestore. A evolução de permissões finas por módulo permanece planejada.
+
+O fluxo de convite não envia e-mail automaticamente: o responsável compartilha o endereço de ativação com o colaborador, que deve criar a conta usando exatamente o e-mail convidado. O documento de convite é vinculado ao UID somente na primeira ativação.
 
 ### Módulos já alinhados ao `empresaId`
 
@@ -263,6 +273,8 @@ Cada aparelho possui um dossiê acessível pelo ícone de pasta na listagem. O r
 
 - [ ] Concluir o isolamento por `empresaId` em todos os módulos remanescentes.
 - [x] Versionar regras seguras do Firestore e índices das consultas multiempresa.
+- [x] Adicionar equipe, convites por e-mail e associação de colaboradores à empresa.
+- [ ] Restringir permissões por módulo e ação para gerente, técnico e caixa, além do isolamento já aplicado por empresa.
 - [ ] Publicar regras e índices em homologação após validar acessos de duas empresas.
 - [x] Integrar vendas de usados ao financeiro de forma atômica e idempotente.
 - [x] Adicionar edição, exclusão e validação de aparelhos usados.

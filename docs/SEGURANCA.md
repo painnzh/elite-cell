@@ -6,6 +6,12 @@ As configurações são gravadas em `empresas/{empresaId}/configuracoes/geral`.
 As regras do Firestore permitem acesso somente à empresa autenticada e ativa,
 validam os campos aceitos e bloqueiam exclusões.
 
+## Equipe e perfis
+
+Convites de colaboradores ficam em `empresas/{empresaId}/membros/{email}`. Apenas o dono da empresa pode criar, alterar ou remover convites. O colaborador só pode ler o próprio convite, identificado pelo e-mail autenticado, e a única alteração própria permitida é ativá-lo uma vez, vinculando seu UID.
+
+Não crie colaboradores alterando diretamente documentos no console sem conferir o e-mail. Para ativar o acesso, a pessoa deve criar a conta no aplicativo usando o mesmo e-mail do convite. A separação efetiva de dados é aplicada pelas regras do Firestore; ocultar um botão no aplicativo nunca substitui a regra.
+
 ## Fotos de ordens de serviço
 
 As fotos de OS usam Cloudinary. O app móvel não pode guardar o segredo da

@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -6,6 +5,8 @@ import 'dashboard_screen.dart';
 import 'cadastro_empresa_screen.dart';
 import '../services/configuracao_empresa_service.dart';
 import '../theme/tema_empresa_controller.dart';
+import '../services/acesso_empresa_service.dart';
+import 'cadastro_colaborador_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -39,34 +40,18 @@ class _LoginScreenState extends State<LoginScreen> {
         throw Exception('Usuário não encontrado.');
       }
 
-      final consulta = await FirebaseFirestore.instance
-          .collection('empresas')
-          .where('uidDono', isEqualTo: usuario.uid)
-          .limit(1)
-          .get();
-
+      final acesso = await AcessoEmpresaService().acessoAtual();
       if (!mounted) return;
 
-      if (consulta.docs.isEmpty) {
+      if (acesso == null) {
         await FirebaseAuth.instance.signOut();
         mostrarMensagem(
-          'Empresa não encontrada. Entre em contato com o suporte.',
+          'Empresa não ativa ou convite não encontrado. Entre em contato com o responsável.',
         );
         return;
       }
 
-      final empresa = consulta.docs.first.data();
-      final status = empresa['status']?.toString().toLowerCase();
-
-      if (status != 'ativo') {
-        await FirebaseAuth.instance.signOut();
-        mostrarMensagem(
-          'Assinatura pendente ou inativa. Regularize seu pagamento.',
-        );
-        return;
-      }
-
-      final configuracao = await ConfiguracaoEmpresaService(usuario.uid).carregar();
+      final configuracao = await ConfiguracaoEmpresaService(acesso.empresaId).carregar();
       temaEmpresaController.value = temaDoValor(configuracao['tema']);
 
       if (!mounted) return;
@@ -75,7 +60,8 @@ Navigator.pushReplacement(
   context,
   MaterialPageRoute(
     builder: (_) => DashboardScreen(
-      empresaId: usuario.uid,
+      empresaId: acesso.empresaId,
+      papel: acesso.papel,
     ),
   ),
 );
@@ -216,6 +202,10 @@ Navigator.pushReplacement(
                         'Cadastrar minha empresa',
                         style: TextStyle(color: dourado),
                       ),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CadastroColaboradorScreen())),
+                      child: Text('Ativar acesso de colaborador', style: TextStyle(color: dourado)),
                     ),
                   ],
                 ),

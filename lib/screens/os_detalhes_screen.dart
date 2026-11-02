@@ -117,7 +117,7 @@ class _OsDetalhesScreenState extends State<OsDetalhesScreen> {
         if (quantidadeAtual < quantidade) {
           throw StateError('Estoque insuficiente para concluir esta OS.');
         }
-        transacao.update(estoqueRef, {
+        transacao.update(estoqueRef as DocumentReference<Object?>, {
           'quantidade': (quantidadeAtual - quantidade).toString(),
         });
       }

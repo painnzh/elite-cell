@@ -15,8 +15,9 @@ import '../widgets/menu_lateral_premium.dart';
 
 class DashboardScreen extends StatelessWidget {
   final String empresaId;
+  final String papel;
 
-  DashboardScreen({super.key, required this.empresaId});
+  DashboardScreen({super.key, required this.empresaId, this.papel = 'dono'});
 
   final Color dourado = Color(0xFFD4AF37);
 
@@ -476,7 +477,7 @@ class DashboardScreen extends StatelessWidget {
         centerTitle: true,
         title: Image.asset('assets/images/elite_cell_logo.png', height: 55),
       ),
-      drawer: MenuLateralPremium(empresaId: empresaId),
+      drawer: MenuLateralPremium(empresaId: empresaId, papel: papel),
 
       body: StreamBuilder<QuerySnapshot>(
         stream: os.where('empresaId', isEqualTo: empresaId).snapshots(),
