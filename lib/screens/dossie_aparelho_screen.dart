@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../utils/valor_monetario.dart';
+
 class DossieAparelhoScreen extends StatefulWidget {
   final String empresaId;
   final String aparelhoId;
@@ -23,10 +25,9 @@ class _DossieAparelhoScreenState extends State<DossieAparelhoScreen> {
   DocumentReference<Map<String, dynamic>> get documento =>
       aparelho.doc(widget.aparelhoId);
 
-  double valor(dynamic valor) =>
-      double.tryParse(valor?.toString().replaceAll(',', '.') ?? '') ?? 0;
+  double valor(dynamic valor) => ValorMonetario.paraDouble(valor);
 
-  String dinheiro(double valor) => 'R\$ ${valor.toStringAsFixed(2)}';
+  String dinheiro(double valor) => ValorMonetario.formatar(valor);
 
   Future<void> adicionarMovimento() async {
     final descricao = TextEditingController();

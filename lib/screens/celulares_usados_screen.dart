@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'dossie_aparelho_screen.dart';
+import '../utils/valor_monetario.dart';
 
 class CelularesUsadosScreen extends StatefulWidget {
   final String empresaId;
@@ -64,8 +65,8 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
       estadoController.text,
       capacidadeController.text,
     ];
-    final compra = double.tryParse(compraController.text.replaceAll(',', '.'));
-    final venda = double.tryParse(vendaController.text.replaceAll(',', '.'));
+    final compra = ValorMonetario.tentarParaDouble(compraController.text);
+    final venda = ValorMonetario.tentarParaDouble(vendaController.text);
     final bateria = int.tryParse(bateriaController.text);
 
     if (camposObrigatorios.any((campo) => campo.trim().isEmpty) ||
@@ -90,7 +91,7 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
   }
 
   double converterValor(dynamic valor) {
-    return double.tryParse(valor.toString().replaceAll(',', '.')) ?? 0;
+    return ValorMonetario.paraDouble(valor);
   }
 
   Future<void> escolherFoto(ImageSource origem) async {
@@ -114,8 +115,8 @@ class _CelularesUsadosScreenState extends State<CelularesUsadosScreen> {
       'cor': corController.text,
       'capacidade': capacidadeController.text,
       'bateria': bateriaController.text,
-      'valor_compra': compraController.text,
-      'valor_venda': vendaController.text,
+      'valor_compra': ValorMonetario.paraDouble(compraController.text),
+      'valor_venda': ValorMonetario.paraDouble(vendaController.text),
       'observacao': observacaoController.text,
       'status': statusSelecionado,
       'publicadoCatalogo': publicadoNoCatalogo,

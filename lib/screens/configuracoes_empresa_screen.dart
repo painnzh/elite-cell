@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/configuracao_empresa_service.dart';
 import '../theme/tema_empresa_controller.dart';
+import '../utils/valor_monetario.dart';
 
 enum SecaoConfiguracao { perfil, geral, personalizacao, meta }
 
@@ -46,8 +47,7 @@ class _ConfiguracoesEmpresaScreenState
     _carregar();
   }
 
-  double _numero(String valor) =>
-      double.tryParse(valor.replaceAll('.', '').replaceAll(',', '.')) ?? 0;
+  double _numero(String valor) => ValorMonetario.paraDouble(valor);
 
   Future<void> _carregar() async {
     final dados = await _service.carregar();

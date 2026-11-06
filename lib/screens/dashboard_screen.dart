@@ -12,6 +12,7 @@ import 'os_screen.dart';
 import 'celulares_usados_screen.dart';
 import 'tecnicos_screen.dart';
 import '../widgets/menu_lateral_premium.dart';
+import '../utils/valor_monetario.dart';
 
 class DashboardScreen extends StatelessWidget {
   final String empresaId;
@@ -29,7 +30,7 @@ class DashboardScreen extends StatelessWidget {
   final tecnicos = FirebaseFirestore.instance.collection('tecnicos');
 
   double converterValor(dynamic valor) {
-    return double.tryParse(valor.toString().replaceAll(',', '.')) ?? 0;
+    return ValorMonetario.paraDouble(valor);
   }
 
   int converterQuantidade(dynamic valor) {
@@ -127,7 +128,7 @@ class DashboardScreen extends StatelessWidget {
           ),
           SizedBox(height: 12),
           Text(
-            'R\$ ${faturamentoMes.toStringAsFixed(2)} / R\$ ${metaEmpresa.toStringAsFixed(2)}',
+            '${ValorMonetario.formatar(faturamentoMes)} / ${ValorMonetario.formatar(metaEmpresa)}',
             style: TextStyle(
               color: Colors.white,
               fontSize: 18,
@@ -154,7 +155,7 @@ class DashboardScreen extends StatelessWidget {
           Text(
             percentual >= 1
                 ? 'Meta batida! 🚀'
-                : 'Faltam R\$ ${(metaEmpresa - faturamentoMes).toStringAsFixed(2)} para bater a meta.',
+                : 'Faltam ${ValorMonetario.formatar(metaEmpresa - faturamentoMes)} para bater a meta.',
             style: TextStyle(
               color: percentual >= 1 ? Colors.greenAccent : Colors.white70,
             ),
