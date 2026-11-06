@@ -103,10 +103,10 @@ service cloud.firestore {
           && empresaId == request.auth.uid
           && request.resource.data.uidDono == request.auth.uid
           && request.resource.data.usuarioId == request.auth.uid
-          && request.resource.data.status == 'pendente'
-          && request.resource.data.statusAssinatura == 'pendente'
-          && request.resource.data.plano == 'mensal'
-          && request.resource.data.valorMensal == 19.90;
+          && request.resource.data.status == 'ativo'
+          && request.resource.data.statusAssinatura == 'teste'
+          && request.resource.data.plano == 'teste'
+          && request.resource.data.valorMensal == 0;
       allow read: if autenticado() && (resource.data.uidDono == request.auth.uid || membroDaEmpresa(empresaId));
       allow update, delete: if false;
 

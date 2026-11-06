@@ -1,11 +1,27 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+class AcessoEmpresaException implements Exception {
+  const AcessoEmpresaException(this.mensagem);
+
+  final String mensagem;
+
+  @override
+  String toString() => mensagem;
+}
+
 class AcessoEmpresa {
-  const AcessoEmpresa({required this.empresaId, required this.papel});
+  const AcessoEmpresa({
+    required this.empresaId,
+    required this.papel,
+    this.plano,
+    this.statusAssinatura,
+  });
 
   final String empresaId;
   final String papel;
+  final String? plano;
+  final String? statusAssinatura;
 
   bool get podeGerirEmpresa => papel == 'dono' || papel == 'administrador';
   bool get podeVerFinanceiro =>
@@ -34,16 +50,27 @@ class AcessoEmpresaService {
     final usuario = _auth.currentUser;
     if (usuario == null) return null;
 
+    // Empresas criadas pelas versões atuais usam o UID como ID do documento.
+    // A leitura direta funciona inclusive quando a assinatura está pendente,
+    // permitindo explicar o bloqueio em vez de tratá-lo como falha genérica.
+    final empresaDoUid = await _db
+        .collection('empresas')
+        .doc(usuario.uid)
+        .get();
+    if (empresaDoUid.exists && empresaDoUid.data()?['uidDono'] == usuario.uid) {
+      return _acessoDono(empresaDoUid.id, empresaDoUid.data()!);
+    }
+
+    // Mantém compatibilidade com cadastros antigos, cujos documentos podem
+    // não ter sido criados com o UID como ID.
     final empresaDona = await _db
         .collection('empresas')
         .where('uidDono', isEqualTo: usuario.uid)
-        // A regra do Firestore também exige que a empresa esteja ativa.
-        // O filtro precisa fazer parte da consulta para ela ser autorizada.
-        .where('status', isEqualTo: 'ativo')
         .limit(1)
         .get();
     if (empresaDona.docs.isNotEmpty) {
-      return AcessoEmpresa(empresaId: empresaDona.docs.first.id, papel: 'dono');
+      final documento = empresaDona.docs.first;
+      return _acessoDono(documento.id, documento.data());
     }
 
     final convite = await _db
@@ -51,7 +78,11 @@ class AcessoEmpresaService {
         .where('email', isEqualTo: _emailAtual())
         .limit(1)
         .get();
-    if (convite.docs.isEmpty) return null;
+    if (convite.docs.isEmpty) {
+      throw const AcessoEmpresaException(
+        'Nenhuma empresa ativa ou convite foi encontrado para esta conta.',
+      );
+    }
 
     final documento = convite.docs.first;
     final dados = documento.data();
@@ -63,11 +94,32 @@ class AcessoEmpresaService {
       });
     }
     if (dados['status'] != 'ativo' && dados['status'] != 'convidado') {
-      return null;
+      throw const AcessoEmpresaException(
+        'Seu acesso de colaborador está inativo. Fale com o responsável da empresa.',
+      );
     }
     return AcessoEmpresa(
       empresaId: documento.reference.parent.parent!.id,
       papel: dados['papel']?.toString() ?? 'tecnico',
+    );
+  }
+
+  AcessoEmpresa _acessoDono(String empresaId, Map<String, dynamic> dados) {
+    final status = dados['status']?.toString().toLowerCase();
+    final statusAssinatura = dados['statusAssinatura']?.toString();
+
+    if (status != 'ativo') {
+      final mensagem = statusAssinatura == 'pendente'
+          ? 'A assinatura da empresa está pendente de ativação.'
+          : 'A empresa está inativa. Entre em contato com o suporte.';
+      throw AcessoEmpresaException(mensagem);
+    }
+
+    return AcessoEmpresa(
+      empresaId: empresaId,
+      papel: 'dono',
+      plano: dados['plano']?.toString(),
+      statusAssinatura: statusAssinatura,
     );
   }
 

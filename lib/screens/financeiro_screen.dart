@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 
+import '../utils/valor_monetario.dart';
+
 class FinanceiroScreen extends StatefulWidget {
   final String empresaId;
 
@@ -24,14 +26,25 @@ class _FinanceiroScreenState extends State<FinanceiroScreen> {
   final financeiro = FirebaseFirestore.instance.collection('financeiro');
 
   Future<void> salvarLancamento() async {
-  await financeiro.add({
-    'empresaId': widget.empresaId,
-    'descricao': descricaoController.text,
-    'valor': valorController.text,
-    'tipo': tipoSelecionado,
-    'pagamento': pagamentoSelecionado,
-    'data': DateTime.now(),
-});
+    final descricao = descricaoController.text.trim();
+    final valor = ValorMonetario.tentarParaDouble(valorController.text);
+    if (descricao.isEmpty || valor == null || valor <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Informe uma descrição e um valor maior que zero.'),
+        ),
+      );
+      return;
+    }
+
+    await financeiro.add({
+      'empresaId': widget.empresaId,
+      'descricao': descricao,
+      'valor': valor,
+      'tipo': tipoSelecionado,
+      'pagamento': pagamentoSelecionado,
+      'data': DateTime.now(),
+    });
 
     descricaoController.clear();
     valorController.clear();
@@ -40,7 +53,7 @@ class _FinanceiroScreenState extends State<FinanceiroScreen> {
   }
 
   double converterValor(dynamic valor) {
-    return double.tryParse(valor.toString().replaceAll(',', '.')) ?? 0;
+    return ValorMonetario.paraDouble(valor);
   }
 
   InputDecoration decoracaoCampo(String label) {
@@ -64,8 +77,9 @@ class _FinanceiroScreenState extends State<FinanceiroScreen> {
       child: TextField(
         controller: controller,
         style: TextStyle(color: Colors.white),
-        keyboardType:
-            label == 'Valor' ? TextInputType.number : TextInputType.text,
+        keyboardType: label == 'Valor'
+            ? const TextInputType.numberWithOptions(decimal: true)
+            : TextInputType.text,
         decoration: decoracaoCampo(label),
       ),
     );
@@ -77,10 +91,7 @@ class _FinanceiroScreenState extends State<FinanceiroScreen> {
       builder: (_) {
         return AlertDialog(
           backgroundColor: Color(0xFF111111),
-          title: Text(
-            'Novo Lançamento',
-            style: TextStyle(color: dourado),
-          ),
+          title: Text('Novo Lançamento', style: TextStyle(color: dourado)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -94,10 +105,7 @@ class _FinanceiroScreenState extends State<FinanceiroScreen> {
                   style: TextStyle(color: Colors.white),
                   decoration: decoracaoCampo('Tipo'),
                   items: ['Entrada', 'Saída'].map((item) {
-                    return DropdownMenuItem(
-                      value: item,
-                      child: Text(item),
-                    );
+                    return DropdownMenuItem(value: item, child: Text(item));
                   }).toList(),
                   onChanged: (valor) {
                     setState(() {
@@ -113,17 +121,11 @@ class _FinanceiroScreenState extends State<FinanceiroScreen> {
                   dropdownColor: Color(0xFF111111),
                   style: TextStyle(color: Colors.white),
                   decoration: decoracaoCampo('Pagamento'),
-                  items: [
-                    'Pix',
-                    'Dinheiro',
-                    'Cartão Débito',
-                    'Cartão Crédito',
-                  ].map((item) {
-                    return DropdownMenuItem(
-                      value: item,
-                      child: Text(item),
-                    );
-                  }).toList(),
+                  items: ['Pix', 'Dinheiro', 'Cartão Débito', 'Cartão Crédito']
+                      .map((item) {
+                        return DropdownMenuItem(value: item, child: Text(item));
+                      })
+                      .toList(),
                   onChanged: (valor) {
                     setState(() {
                       pagamentoSelecionado = valor!;
@@ -136,10 +138,7 @@ class _FinanceiroScreenState extends State<FinanceiroScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Cancelar',
-                style: TextStyle(color: Colors.white70),
-              ),
+              child: Text('Cancelar', style: TextStyle(color: Colors.white70)),
             ),
             ElevatedButton(
               onPressed: salvarLancamento,
@@ -269,10 +268,7 @@ class _FinanceiroScreenState extends State<FinanceiroScreen> {
 
                         return Text(
                           texto,
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 10,
-                          ),
+                          style: TextStyle(color: Colors.white70, fontSize: 10),
                         );
                       },
                     ),
@@ -306,7 +302,9 @@ class _FinanceiroScreenState extends State<FinanceiroScreen> {
                     barRods: [
                       BarChartRodData(
                         toY: saldo < 0 ? 0 : saldo,
-                        color: saldo >= 0 ? Colors.greenAccent : Colors.redAccent,
+                        color: saldo >= 0
+                            ? Colors.greenAccent
+                            : Colors.redAccent,
                         width: 24,
                         borderRadius: BorderRadius.circular(6),
                       ),
@@ -330,10 +328,7 @@ class _FinanceiroScreenState extends State<FinanceiroScreen> {
         backgroundColor: Colors.black,
         iconTheme: IconThemeData(color: dourado),
         centerTitle: true,
-        title: Image.asset(
-          'assets/images/elite_cell_logo.png',
-          height: 45,
-        ),
+        title: Image.asset('assets/images/elite_cell_logo.png', height: 45),
       ),
 
       floatingActionButton: FloatingActionButton(
@@ -344,47 +339,40 @@ class _FinanceiroScreenState extends State<FinanceiroScreen> {
       ),
 
       body: StreamBuilder<QuerySnapshot>(
-    stream: financeiro
-        .where('empresaId', isEqualTo: widget.empresaId)
-        .snapshots(),
+        stream: financeiro
+            .where('empresaId', isEqualTo: widget.empresaId)
+            .snapshots(),
         builder: (context, snapshot) {
-if (snapshot.hasError) {
-  debugPrint('Erro ao carregar financeiro: ${snapshot.error}');
+          if (snapshot.hasError) {
+            debugPrint('Erro ao carregar financeiro: ${snapshot.error}');
 
-  return Center(
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Text(
-        'Erro ao carregar financeiro:\n${snapshot.error}',
-        textAlign: TextAlign.center,
-      ),
-    ),
-  );
-}
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'Erro ao carregar financeiro:\n${snapshot.error}',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
+          }
 
-if (snapshot.connectionState == ConnectionState.waiting) {
-  return Center(
-    child: CircularProgressIndicator(color: dourado),
-  );
-}
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator(color: dourado));
+          }
 
           final todos = snapshot.data!.docs;
 
           final dados = todos.where((doc) {
             final lanc = doc.data() as Map<String, dynamic>;
 
-            return (lanc['descricao'] ?? '')
-                    .toString()
-                    .toLowerCase()
-                    .contains(busca) ||
-                (lanc['tipo'] ?? '')
-                    .toString()
-                    .toLowerCase()
-                    .contains(busca) ||
-                (lanc['pagamento'] ?? '')
-                    .toString()
-                    .toLowerCase()
-                    .contains(busca);
+            return (lanc['descricao'] ?? '').toString().toLowerCase().contains(
+                  busca,
+                ) ||
+                (lanc['tipo'] ?? '').toString().toLowerCase().contains(busca) ||
+                (lanc['pagamento'] ?? '').toString().toLowerCase().contains(
+                  busca,
+                );
           }).toList();
 
           double entradas = 0;
@@ -403,8 +391,9 @@ if (snapshot.connectionState == ConnectionState.waiting) {
 
           final saldo = entradas - saidas;
           final totalLancamentos = todos.length;
-          final ticketMedio =
-              totalLancamentos == 0 ? 0 : entradas / totalLancamentos;
+          final ticketMedio = totalLancamentos == 0
+              ? 0
+              : entradas / totalLancamentos;
           final corSaldo = saldo >= 0 ? dourado : Colors.redAccent;
 
           return Column(
@@ -430,10 +419,7 @@ if (snapshot.connectionState == ConnectionState.waiting) {
                     SizedBox(height: 4),
                     Text(
                       'Controle financeiro avançado',
-                      style: TextStyle(
-                        color: Colors.white60,
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Colors.white60, fontSize: 14),
                     ),
                   ],
                 ),
@@ -455,25 +441,25 @@ if (snapshot.connectionState == ConnectionState.waiting) {
                           resumoCard(
                             Icons.arrow_downward,
                             'Entradas',
-                            'R\$ ${entradas.toStringAsFixed(2)}',
+                            ValorMonetario.formatar(entradas),
                             dourado,
                           ),
                           resumoCard(
                             Icons.arrow_upward,
                             'Saídas',
-                            'R\$ ${saidas.toStringAsFixed(2)}',
+                            ValorMonetario.formatar(saidas),
                             Colors.redAccent,
                           ),
                           resumoCard(
                             Icons.account_balance_wallet,
                             'Saldo',
-                            'R\$ ${saldo.toStringAsFixed(2)}',
+                            ValorMonetario.formatar(saldo),
                             corSaldo,
                           ),
                           resumoCard(
                             Icons.receipt_long,
                             'Ticket médio',
-                            'R\$ ${ticketMedio.toStringAsFixed(2)}',
+                            ValorMonetario.formatar(ticketMedio),
                             Colors.greenAccent,
                           ),
                           resumoCard(
@@ -485,7 +471,7 @@ if (snapshot.connectionState == ConnectionState.waiting) {
                           resumoCard(
                             Icons.trending_up,
                             'Lucro',
-                            'R\$ ${saldo.toStringAsFixed(2)}',
+                            ValorMonetario.formatar(saldo),
                             saldo >= 0 ? Colors.greenAccent : Colors.redAccent,
                           ),
                         ],
@@ -541,8 +527,7 @@ if (snapshot.connectionState == ConnectionState.waiting) {
                           final lanc = item.data() as Map<String, dynamic>;
 
                           final isEntrada = lanc['tipo'] == 'Entrada';
-                          final cor =
-                              isEntrada ? dourado : Colors.redAccent;
+                          final cor = isEntrada ? dourado : Colors.redAccent;
 
                           return Card(
                             elevation: 8,
