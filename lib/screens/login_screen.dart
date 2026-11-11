@@ -28,8 +28,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => carregando = true);
 
     try {
-      final credencial =
-          await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final credencial = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: emailController.text.trim(),
         password: senhaController.text,
       );
@@ -51,20 +50,20 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      final configuracao = await ConfiguracaoEmpresaService(acesso.empresaId).carregar();
+      final configuracao = await ConfiguracaoEmpresaService(
+        acesso.empresaId,
+      ).carregar();
       temaEmpresaController.value = temaDoValor(configuracao['tema']);
 
       if (!mounted) return;
 
-Navigator.pushReplacement(
-  context,
-  MaterialPageRoute(
-    builder: (_) => DashboardScreen(
-      empresaId: acesso.empresaId,
-      papel: acesso.papel,
-    ),
-  ),
-);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              DashboardScreen(empresaId: acesso.empresaId, papel: acesso.papel),
+        ),
+      );
     } on FirebaseAuthException catch (e) {
       mostrarMensagem(
         e.code == 'invalid-credential' ||
@@ -73,10 +72,22 @@ Navigator.pushReplacement(
             ? 'E-mail ou senha incorretos.'
             : 'Não foi possível entrar. Verifique sua conexão.',
       );
-    } catch (e) {
-      mostrarMensagem(
-        'Não foi possível verificar a assinatura. Tente novamente.',
-      );
+    } on AcessoEmpresaException catch (e) {
+      await FirebaseAuth.instance.signOut();
+      mostrarMensagem(e.mensagem);
+    } on FirebaseException catch (e) {
+      final mensagem = switch (e.code) {
+        'permission-denied' =>
+          'Sem permissão para validar seu acesso. Atualize o aplicativo e tente novamente.',
+        'unavailable' =>
+          'Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.',
+        _ => 'Não foi possível validar seu acesso agora. Tente novamente.',
+      };
+      await FirebaseAuth.instance.signOut();
+      mostrarMensagem(mensagem);
+    } catch (_) {
+      await FirebaseAuth.instance.signOut();
+      mostrarMensagem('Não foi possível concluir o acesso. Tente novamente.');
     } finally {
       if (mounted) setState(() => carregando = false);
     }
@@ -85,17 +96,15 @@ Navigator.pushReplacement(
   void mostrarMensagem(String mensagem) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(mensagem)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(mensagem)));
   }
 
   void abrirCadastroEmpresa() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => const CadastroEmpresaScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const CadastroEmpresaScreen()),
     );
   }
 
@@ -130,10 +139,7 @@ Navigator.pushReplacement(
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              Image.asset(
-                'assets/images/elite_cell_logo.png',
-                height: 150,
-              ),
+              Image.asset('assets/images/elite_cell_logo.png', height: 150),
               const SizedBox(height: 10),
               Text(
                 'ELITE CELL',
@@ -204,8 +210,16 @@ Navigator.pushReplacement(
                       ),
                     ),
                     TextButton(
-                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CadastroColaboradorScreen())),
-                      child: Text('Ativar acesso de colaborador', style: TextStyle(color: dourado)),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const CadastroColaboradorScreen(),
+                        ),
+                      ),
+                      child: Text(
+                        'Ativar acesso de colaborador',
+                        style: TextStyle(color: dourado),
+                      ),
                     ),
                   ],
                 ),

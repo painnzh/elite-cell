@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../utils/valor_monetario.dart';
+
 class OrdemServicoFluxoService {
   OrdemServicoFluxoService({FirebaseFirestore? firestore})
     : _firestore = firestore ?? FirebaseFirestore.instance;
@@ -18,11 +20,7 @@ class OrdemServicoFluxoService {
   ];
 
   static double valorNumerico(dynamic valor) {
-    if (valor is num) return valor.toDouble();
-    return double.tryParse(
-          valor.toString().replaceAll('R\$', '').replaceAll(',', '.').trim(),
-        ) ??
-        0;
+    return ValorMonetario.paraDouble(valor);
   }
 
   static int quantidadeNumerica(dynamic valor) =>

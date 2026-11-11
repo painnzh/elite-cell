@@ -6,8 +6,7 @@ class CadastroEmpresaScreen extends StatefulWidget {
   const CadastroEmpresaScreen({super.key});
 
   @override
-  State<CadastroEmpresaScreen> createState() =>
-      _CadastroEmpresaScreenState();
+  State<CadastroEmpresaScreen> createState() => _CadastroEmpresaScreenState();
 }
 
 class _CadastroEmpresaScreenState extends State<CadastroEmpresaScreen> {
@@ -21,11 +20,8 @@ class _CadastroEmpresaScreenState extends State<CadastroEmpresaScreen> {
 
   void mensagem(String texto) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(texto)),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(texto)));
   }
-
 
   Future<void> cadastrar() async {
     if (carregando) return;
@@ -59,8 +55,7 @@ class _CadastroEmpresaScreenState extends State<CadastroEmpresaScreen> {
     bool dadosSalvos = false;
 
     try {
-      credencial = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
+      credencial = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
         password: senha,
       );
@@ -71,18 +66,17 @@ class _CadastroEmpresaScreenState extends State<CadastroEmpresaScreen> {
         throw Exception('Não foi possível criar a conta.');
       }
 
-      await FirebaseFirestore.instance
-          .collection('empresas')
-          .doc(usuario.uid)
-          .set({
+      await FirebaseFirestore.instance.collection('empresas').doc(usuario.uid).set({
         'nome': nome,
         'email': email,
         'usuarioId': usuario.uid,
         'uidDono': usuario.uid,
-        'status': 'pendente',
-        'statusAssinatura': 'pendente',
-        'plano': 'mensal',
-        'valorMensal': 19.90,
+        // O cadastro inicial é um ambiente de teste. A mudança para um plano
+        // pago continua sendo responsabilidade de uma operação administrativa.
+        'status': 'ativo',
+        'statusAssinatura': 'teste',
+        'plano': 'teste',
+        'valorMensal': 0,
         'criadoEm': FieldValue.serverTimestamp(),
       });
 
@@ -90,9 +84,7 @@ class _CadastroEmpresaScreenState extends State<CadastroEmpresaScreen> {
 
       if (!mounted) return;
 
-      mensagem(
-        'Conta criada! A assinatura está pendente de confirmação.',
-      );
+      mensagem('Conta criada! Seu ambiente de teste já está liberado.');
 
       Navigator.pop(context);
     } on FirebaseAuthException catch (e) {
@@ -167,11 +159,7 @@ class _CadastroEmpresaScreenState extends State<CadastroEmpresaScreen> {
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              Icon(
-                Icons.storefront,
-                size: 70,
-                color: dourado,
-              ),
+              Icon(Icons.storefront, size: 70, color: dourado),
               const SizedBox(height: 12),
               Text(
                 'ELITE CELL',
@@ -184,11 +172,8 @@ class _CadastroEmpresaScreenState extends State<CadastroEmpresaScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Plano mensal: R\$ 19,90',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 16,
-                ),
+                'Ambiente de teste liberado para sua empresa',
+                style: TextStyle(color: Colors.white70, fontSize: 16),
               ),
               const SizedBox(height: 28),
               TextField(
@@ -231,9 +216,7 @@ class _CadastroEmpresaScreenState extends State<CadastroEmpresaScreen> {
                     ),
                   ),
                   child: carregando
-                      ? const CircularProgressIndicator(
-                          color: Colors.black,
-                        )
+                      ? const CircularProgressIndicator(color: Colors.black)
                       : const Text(
                           'CRIAR CONTA',
                           style: TextStyle(

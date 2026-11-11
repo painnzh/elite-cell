@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'estoque_detalhes_screen.dart';
 
+import '../utils/valor_monetario.dart';
+
 class EstoqueScreen extends StatefulWidget {
   final String empresaId;
 
@@ -26,18 +28,38 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
   final estoque = FirebaseFirestore.instance.collection('estoque');
 
   double converterValor(dynamic valor) {
-    return double.tryParse(valor.toString().replaceAll(',', '.')) ?? 0;
+    return ValorMonetario.paraDouble(valor);
   }
 
   Future<void> salvarPeca() async {
+    final quantidade = int.tryParse(quantidadeController.text.trim());
+    final custo = ValorMonetario.tentarParaDouble(custoController.text);
+    final venda = ValorMonetario.tentarParaDouble(vendaController.text);
+    if (nomeController.text.trim().isEmpty ||
+        quantidade == null ||
+        quantidade <= 0 ||
+        custo == null ||
+        venda == null ||
+        custo < 0 ||
+        venda < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Informe nome, quantidade e valores válidos para a peça.',
+          ),
+        ),
+      );
+      return;
+    }
+
     await estoque.add({
       'empresaId': widget.empresaId,
-      'nome': nomeController.text,
-      'modelo': modeloController.text,
-      'quantidade': quantidadeController.text,
-      'custo': custoController.text,
-      'venda': vendaController.text,
-      'fornecedor': fornecedorController.text,
+      'nome': nomeController.text.trim(),
+      'modelo': modeloController.text.trim(),
+      'quantidade': quantidade,
+      'custo': custo,
+      'venda': venda,
+      'fornecedor': fornecedorController.text.trim(),
       'data': DateTime.now(),
     });
 
@@ -67,11 +89,19 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
   }
 
   Widget campoFormulario(TextEditingController controller, String label) {
+    final campoNumerico = <String>{
+      'Quantidade',
+      'Valor de custo',
+      'Valor de venda',
+    }.contains(label);
     return Padding(
       padding: EdgeInsets.only(bottom: 12),
       child: TextField(
         controller: controller,
         style: TextStyle(color: Colors.white),
+        keyboardType: campoNumerico
+            ? const TextInputType.numberWithOptions(decimal: true)
+            : TextInputType.text,
         decoration: decoracaoCampo(label),
       ),
     );
@@ -298,7 +328,7 @@ class _EstoqueScreenState extends State<EstoqueScreen> {
                                 style: TextStyle(color: Colors.white70),
                               ),
                               Text(
-                                'Qtd: ${peca['quantidade'] ?? ''} | Lucro: R\$ ${lucro.toStringAsFixed(2)}',
+                                'Qtd: ${peca['quantidade'] ?? ''} | Lucro: ${ValorMonetario.formatar(lucro)}',
                                 style: TextStyle(
                                   color: estoqueBaixo
                                       ? Colors.redAccent

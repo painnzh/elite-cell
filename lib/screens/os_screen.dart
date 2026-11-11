@@ -10,6 +10,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'os_detalhes_screen.dart';
 import '../services/configuracao_empresa_service.dart';
 import '../services/ordem_servico_fluxo_service.dart';
+import '../utils/valor_monetario.dart';
 
 class OsScreen extends StatefulWidget {
   final String empresaId;
@@ -77,12 +78,8 @@ class _OsScreenState extends State<OsScreen> {
         : tipoServicoSelecionado == 'Troca de conector'
         ? 'trocaConector'
         : '';
-    final configurado = double.tryParse(
-      (valoresServico[chave] ?? '').toString(),
-    );
-    return configurado != null && configurado > 0
-        ? configurado
-        : maoDeObraPadrao;
+    final configurado = ValorMonetario.paraDouble(valoresServico[chave]);
+    return configurado > 0 ? configurado : maoDeObraPadrao;
   }
 
   double calcularOrcamento(double valorPeca, double descontoPercentual) {
@@ -353,15 +350,11 @@ class _OsScreenState extends State<OsScreen> {
             ),
           ),
           onPressed: () {
-            double valorPeca =
-                double.tryParse(
-                  valorPecaController.text.replaceAll(',', '.'),
-                ) ??
-                0;
+            final valorPeca = ValorMonetario.paraDouble(
+              valorPecaController.text,
+            );
 
-            double desconto =
-                double.tryParse(descontoController.text.replaceAll(',', '.')) ??
-                0;
+            final desconto = ValorMonetario.paraDouble(descontoController.text);
 
             double valorFinal = calcularOrcamento(valorPeca, desconto);
 
